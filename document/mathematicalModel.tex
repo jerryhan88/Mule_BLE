@@ -1,0 +1,77 @@
+\documentclass{article}
+
+\usepackage[a4paper, margin=1.5cm]{geometry}
+\usepackage{multicol}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{supertabular}
+\usepackage{array,makecell}
+
+\DeclareMathOperator*{\argmax}{argmax}
+
+\begin{document}
+\renewcommand{\arraystretch}{1.5}
+
+\thispagestyle{empty}
+\setcounter{secnumdepth}{0} %% no numbering
+
+\section{Inputs}
+
+\vspace{0.2cm}
+\renewcommand{\arraystretch}{1.5}
+\begin{supertabular}{>{\centering\arraybackslash}m{1.0cm} >{\arraybackslash}m{15cm}}
+	
+	$\mathbf{K}$ 		& the number of time slots about periodic data collection \\
+	$K$ 				& the set of time slots, $K = \{ 1, ..., \mathbf{K}\}$\\
+	$M$ 				& the set of mules \\
+	$B$ 				& the set of beacons \\
+	$c_{b}$ 			& the remaining battery capacity of beacon $b \in B$ \\
+	$L$ 				& the set of power level, \\
+						& $L = \{ low, medium, high, infty \} = \{ 1, 2, 3, \infty\}$\\
+	$e_{l}$				& the amount of consumed energy, when power level is $l \in L$; \\
+						& if $l = \infty$, $e_{l}=\infty$ \\ 
+	%
+	$p^{m, k}_{b, l}$	& the probability that mule $m \in M$ pass beacon $b$'s transmission range when the power level is $l$ at time slot $k \in K$ \\
+	$R$				& the reliability level about the system\\
+
+\end{supertabular}
+
+\vspace{0.2cm}
+\noindent Decision (dependet) variables
+
+\begin{supertabular}{>{\centering\arraybackslash}m{1.0cm} >{\arraybackslash}m{16.0cm}}
+	$\alpha_{b, l}$	& $\left\{
+  							\begin{array}{ll}
+  								1 & \textrm{if the level of}~b \in B~\textrm{is}~l \in L \\
+								0 & \textrm{otherwise}
+  							\end{array}
+							\right.$ \\
+	$y^{m}$				& $\left\{
+  							\begin{array}{ll}
+  								1 & \textrm{if trajectory of mule}~m \in M~\textrm{is considered}\\
+								0 & \textrm{otherwise}
+  							\end{array}
+							\right.$ \\
+\end{supertabular}
+
+
+\subsection{Objectives}
+\begin{equation}
+	\max \min_{b \in B} \big( c_{b} - \sum_{l \in L} e_{l} \cdot \alpha_{b, l} \big)
+	\label{eq:maxMinEC}
+\end{equation}
+\begin{equation}
+	\min \sum_{m \in M} y^{m}
+	\label{eq:minM}
+\end{equation}
+
+\subsection{Constraints}
+\begin{equation}
+	\sum_{l \in L} \alpha_{b, l} = 1,~~~~\forall b \in B
+	\label{eq:powLvSelection}
+\end{equation}
+\begin{equation}
+	1 - \prod_{m \in M} \prod_{l \in L} (1 - p^{m, k}_{b, l} \cdot y^{m} \cdot \alpha_{b, l}) \ge R,~~~~\forall k \in K,~\forall b \in B
+	\label{eq:coveringProb}
+\end{equation}
+
+\end{document}

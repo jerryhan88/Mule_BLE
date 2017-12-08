@@ -1,0 +1,191 @@
+import os.path as opath
+import os, fnmatch
+import csv, gzip
+import datetime, time
+import networkx as nx
+import pickle
+from xlrd import open_workbook
+
+HOUR_9AM_6PM = [h for h in range(9, 18)]
+MON, TUE, WED, THR, FRI, SAT, SUN = range(7)
+N_TIMESLOT = 4
+Intv = 60 / N_TIMESLOT
+
+
+landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
+beacons_fpath = opath.join('z_data', 'BeaconLocation.xlsx')
+rawTraj_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
+
+
+def get_beaconInfo(floor):
+    book = open_workbook(beacons_fpath)
+    sh = book.sheet_by_name('BriefRepresentation')
+    beacons2landmarks, landmarks2beacons = {}, {}
+    floor_format = '0' + floor[len('Lv'):] + '0'
+    for i in range(1, sh.nrows):
+        beaconID, locationID = map(str, map(int, [sh.cell(i, 0).value, sh.cell(i, 1).value]))
+        lv = locationID[3:6]
+        landmarkId = str(int(locationID[-4:]))
+        if floor_format == lv:
+            beacons2landmarks[beaconID] = locationID
+            if landmarkId not in landmarks2beacons:
+                landmarks2beacons[landmarkId] = []
+            landmarks2beacons[landmarkId].append(beaconID)
+    #
+    return beacons2landmarks, landmarks2beacons
+
+
+def get_landmarkG(floor):
+    landmarkG_fpath = opath.join('z_data', 'landmarkG-%s.pkl' % floor)
+    if not opath.exists(landmarkG_fpath):
+        book = open_workbook(landmarks_fpath)
+        sh = book.sheet_by_name('%s' % (floor))
+        #
+        elist = []
+        def handle_rb_edges(n0, i0, j0, sh, elist):
+            for i1, j1 in [(i0 + 1, j0), (i0, j0 + 1)]:
+                if sh.nrows <= i1 or sh.ncols <= j1:
+                    continue
+                cv1 = sh.cell(i1, j1).value
+                if cv1 == '':
+                    continue
+                if type(cv1) == float:
+                    n1 = str(int(cv1))
+                    elist.append((n0, n1))
+                elif ',' in cv1:
+                    n1, n2 = cv1.split(',')
+                    elist.append((n0, n1))
+                    elist.append((n0, n2))
+                else:
+                    if ';' in cv1:
+                        continue
+                    elif 'd' in cv1:
+                        n1 = cv1
+                        elist.append((n0, n1))
+                    else:
+                        assert False
+
+        for i0 in range(sh.nrows):
+            for j0 in range(sh.ncols):
+                if i0 < 1 or j0 < 1:
+                    continue
+                cv0 = sh.cell(i0, j0).value
+                if cv0 == '':
+                    continue
+                if type(cv0) == float:
+                    n0 = str(int(cv0))
+                    handle_rb_edges(n0, i0, j0, sh, elist)
+                elif ',' in cv0:
+                    n00, n01 = cv0.split(',')
+                    for n0 in [n00, n01]:
+                        handle_rb_edges(n0, i0, j0, sh, elist)
+                else:
+                    if ';' in cv0:
+                        n0, others = cv0.split(';')
+                        n1, n2 = others.split('-')
+                        elist.append((n0, n1))
+                        elist.append((n0, n2))
+                    elif 'd' in cv0:
+                        n0 = cv0
+                        handle_rb_edges(n0, i0, j0, sh, elist)
+                    else:
+                        assert False, (cv0, i0, j0)
+        #
+        G = nx.Graph()
+        G.add_edges_from(elist)
+        nx.write_gpickle(G, landmarkG_fpath)
+    else:
+        G = nx.read_gpickle(landmarkG_fpath)
+    return G
+    # print(nx.shortest_path(G, '57', '80'))
+
+
+def preprocess_rawTraj(floor, dow=TUE):
+    floor_format = '0' + floor[len('Lv'):] + '0'
+    dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    if not opath.exists(dpath):
+        os.mkdir(dpath)
+    with gzip.open(rawTraj_fpath, 'rt') as r_csvfile:
+        reader = csv.DictReader(r_csvfile)
+        for row in reader:
+            t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+            if t.tm_wday is not dow:
+                continue
+            if not t.tm_hour in HOUR_9AM_6PM:
+                continue
+            locationID = row['location']
+            lv = locationID[3:6]
+            if floor_format != lv:
+                continue
+            lv = 'Lv%s' % lv[1:-1]
+            fpath = opath.join(dpath,
+                               'traj-%s-W%d-%d%02d%02d-H%02d.csv' % (lv, dow, t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour))
+            if not opath.exists(fpath):
+                with open(fpath, 'w') as w_csvfile:
+                    writer = csv.writer(w_csvfile, lineterminator='\n')
+                    new_headers = ['time', 'id', 'location']
+                    writer.writerow(new_headers)
+            with open(fpath, 'a') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                writer.writerow([row['time'], row['id'], row['location']])
+
+
+def gen_indiTrajectory(floor, dow=TUE, hour=10):
+    dpath = opath.join('z_data', 'tra')
+    indi_dpath = opath.join(dpath, 'individual')
+    if not opath.exists(indi_dpath):
+        os.mkdir(indi_dpath)
+    mules_index = {}
+    for fn in os.listdir(dpath):
+        if not fnmatch.fnmatch(fn, '*-H%02d.csv' % hour):
+            continue
+        prefix = fn[:-len('.csv')]
+        mules_ts_logs = {}
+        with open(opath.join(dpath, fn)) as r_csvfile:
+            reader = csv.DictReader(r_csvfile)
+            for row in reader:
+                t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+                curTime = datetime.datetime.fromtimestamp(time.mktime(t))
+                mid = row['id']
+                if mid not in mules_ts_logs:
+                    mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
+                if mid not in mules_index:
+                    mules_index[mid] = len(mules_index)
+                ts = int(curTime.minute / Intv)
+                mules_ts_logs[mid][ts].append((curTime, row['location']))
+        #
+        for mid, ts_logs in mules_ts_logs.items():
+            for ts, traj in enumerate(ts_logs):
+                if len(traj) < 2:
+                    continue
+                traj.sort()
+                indi_tra_fpath = opath.join(indi_dpath, '%s-%d-%d.csv' % (prefix, mules_index[mid], ts))
+                with open(indi_tra_fpath, 'w') as w_csvfile:
+                    writer = csv.writer(w_csvfile, lineterminator='\n')
+                    new_headers = ['fTime', 'tTime', 'duration', 'location']
+                    writer.writerow(new_headers)
+                    t0, l0 = None, ''
+                    for t1, l1 in traj:
+                        if t0 is None:
+                            t0, l0 = t1, l1
+                        if l1 != l0:
+                            new_row = [t0, t1, (t1 - t0).seconds, l0]
+                            writer.writerow(new_row)
+                            t0, l0 = t1, l1
+                    if l1 == l0:
+                        new_row = [t0, t1, (t1 - t0).seconds, l0]
+                        writer.writerow(new_row)
+
+
+
+if __name__ == '__main__':
+    floor = 'Lv4'
+    for dow in [
+                # MON,
+                # TUE,
+                WED,
+                # THR, FRI
+                ]:
+        preprocess_rawTraj(floor, dow)
+
+    # get_muleTrajectory(10)
