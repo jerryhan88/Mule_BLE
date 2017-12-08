@@ -119,7 +119,7 @@ def preprocess_rawTraj(floor, dow=TUE):
                 continue
             lv = 'Lv%s' % lv[1:-1]
             fpath = opath.join(dpath,
-                               'traj-%s-W%d-%d%02d%02d-H%02d.csv' % (lv, dow, t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour))
+                               'traj-%s-W%d-H%02d-%d%02d%02d.csv' % (lv, dow, t.tm_hour, t.tm_year, t.tm_mon, t.tm_mday))
             if not opath.exists(fpath):
                 with open(fpath, 'w') as w_csvfile:
                     writer = csv.writer(w_csvfile, lineterminator='\n')
@@ -131,17 +131,17 @@ def preprocess_rawTraj(floor, dow=TUE):
 
 
 def gen_indiTrajectory(floor, dow=TUE, hour=10):
-    dpath = opath.join('z_data', 'tra')
-    indi_dpath = opath.join(dpath, 'individual')
-    if not opath.exists(indi_dpath):
-        os.mkdir(indi_dpath)
+    lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    lwh_dpath = opath.join(lw_dpath, 'traj-%s-W%d-H%02d' % (floor, dow, hour))
+    if not opath.exists(lwh_dpath):
+        os.mkdir(lwh_dpath)
     mules_index = {}
-    for fn in os.listdir(dpath):
-        if not fnmatch.fnmatch(fn, '*-H%02d.csv' % hour):
+    for fn in os.listdir(lw_dpath):
+        if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
             continue
         prefix = fn[:-len('.csv')]
         mules_ts_logs = {}
-        with open(opath.join(dpath, fn)) as r_csvfile:
+        with open(opath.join(lw_dpath, fn)) as r_csvfile:
             reader = csv.DictReader(r_csvfile)
             for row in reader:
                 t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
@@ -151,15 +151,18 @@ def gen_indiTrajectory(floor, dow=TUE, hour=10):
                     mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
                 if mid not in mules_index:
                     mules_index[mid] = len(mules_index)
-                ts = int(curTime.minute / Intv)
-                mules_ts_logs[mid][ts].append((curTime, row['location']))
+                k = int(curTime.minute / Intv)
+                mules_ts_logs[mid][k].append((curTime, row['location']))
         #
         for mid, ts_logs in mules_ts_logs.items():
-            for ts, traj in enumerate(ts_logs):
+            for k, traj in enumerate(ts_logs):
                 if len(traj) < 2:
                     continue
                 traj.sort()
-                indi_tra_fpath = opath.join(indi_dpath, '%s-%d-%d.csv' % (prefix, mules_index[mid], ts))
+
+
+
+                indi_tra_fpath = opath.join(indi_dpath, '%s-mid%d-k%d.csv' % (prefix, mules_index[mid], k))
                 with open(indi_tra_fpath, 'w') as w_csvfile:
                     writer = csv.writer(w_csvfile, lineterminator='\n')
                     new_headers = ['fTime', 'tTime', 'duration', 'location']
