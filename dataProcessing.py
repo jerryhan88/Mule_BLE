@@ -97,7 +97,6 @@ def get_landmarkG(floor):
     else:
         G = nx.read_gpickle(landmarkG_fpath)
     return G
-    # print(nx.shortest_path(G, '57', '80'))
 
 
 def preprocess_rawTraj(floor, dow=TUE):
@@ -179,6 +178,7 @@ def gen_indiTrajectory(floor, dow=WED):
 
 
 def aggregate_indiTrajectory(floor, dow=WED):
+    G = get_landmarkG(floor)
     lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
     mids = set()
     for hour in HOUR_9AM_6PM:
@@ -190,23 +190,43 @@ def aggregate_indiTrajectory(floor, dow=WED):
                 continue
             _, _, _, _, _, mid, _ = fn[:-len('.csv')].split('-')
             mids.add(mid)
+
+    mids = sorted(list(mids))
     for hour in HOUR_9AM_6PM:
-        prefix = 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour)
-        indi_dpath = opath.join(lw_dpath, prefix)
+        fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+        indiTraj_prefix = 'indiTraj-%s' % fdh
+        indi_dpath = opath.join(lw_dpath, indiTraj_prefix)
         fns = os.listdir(indi_dpath)
+        #
+        indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
+        if not opath.exists(indiS_dpath):
+            os.mkdir(indiS_dpath)
         for mid in mids:
+            indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-%s.csv' % (fdh, mid))
+            with open(indiTrajS_fpath, 'w') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                new_headers = ['date', 'timeslot', 'trajectories']
+                writer.writerow(new_headers)
             for k in range(N_TIMESLOT):
-                print('%s-K%d-%s-*.csv' % (prefix, k, mid))
-                fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-K%d-%s-*.csv' % (prefix, k, mid))]
-                print(fnsF)
-                # assert False
-
-            #
-
-
-
-
-
+                fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-K%d-%s-*.csv' % (indiTraj_prefix, k, mid))]
+                if not fnsF:
+                    continue
+                for fn in fnsF:
+                    _, _, _, _, _, _, yyyymmdd = fn[:-len('.csv')].split('-')
+                    trajectories = set()
+                    with open(opath.join(indi_dpath, fn), 'rt') as r_csvfile:
+                        reader = csv.DictReader(r_csvfile)
+                        prevLM = None
+                        for row in reader:
+                            locationID = row['location']
+                            curLM = str(int(locationID[-4:]))
+                            if prevLM is not None:
+                                trajectories.add(tuple(nx.shortest_path(G, prevLM, curLM)))
+                            prevLM = curLM
+                    with open(indiTrajS_fpath, 'a') as w_csvfile:
+                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                        new_row = [yyyymmdd, k, list(trajectories)]
+                        writer.writerow(new_row)
 
 
 if __name__ == '__main__':
