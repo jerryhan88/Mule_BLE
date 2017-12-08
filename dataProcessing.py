@@ -140,7 +140,7 @@ def gen_indiTrajectory(floor, dow=WED):
         for fn in os.listdir(lw_dpath):
             if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
                 continue
-            prefix = fn[len('traj-'):-len('-20170201.csv')].split
+            prefix = fn[len('traj-'):-len('-20170201.csv')]
             suffix = fn[-len('20170201.csv'):]
             mules_ts_logs = {}
             with open(opath.join(lw_dpath, fn)) as r_csvfile:
