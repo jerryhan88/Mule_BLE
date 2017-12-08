@@ -223,6 +223,7 @@ def aggregate_indiTrajectory(floor, dow=WED):
                             if prevLM is not None:
                                 trajectories.add(tuple(nx.shortest_path(G, prevLM, curLM)))
                             prevLM = curLM
+                        trajectories.add(prevLM)
                     with open(indiTrajS_fpath, 'a') as w_csvfile:
                         writer = csv.writer(w_csvfile, lineterminator='\n')
                         new_row = [yyyymmdd, k, list(trajectories)]
