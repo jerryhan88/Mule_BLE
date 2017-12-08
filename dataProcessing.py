@@ -130,65 +130,65 @@ def preprocess_rawTraj(floor, dow=TUE):
                 writer.writerow([row['time'], row['id'], row['location']])
 
 
-def gen_indiTrajectory(floor, dow=TUE, hour=10):
+def gen_indiTrajectory(floor, dow=WED):
     lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
-    lwh_dpath = opath.join(lw_dpath, 'traj-%s-W%d-H%02d' % (floor, dow, hour))
-    if not opath.exists(lwh_dpath):
-        os.mkdir(lwh_dpath)
     mules_index = {}
-    for fn in os.listdir(lw_dpath):
-        if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
-            continue
-        prefix = fn[:-len('.csv')]
-        mules_ts_logs = {}
-        with open(opath.join(lw_dpath, fn)) as r_csvfile:
-            reader = csv.DictReader(r_csvfile)
-            for row in reader:
-                t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
-                curTime = datetime.datetime.fromtimestamp(time.mktime(t))
-                mid = row['id']
-                if mid not in mules_ts_logs:
-                    mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
-                if mid not in mules_index:
-                    mules_index[mid] = len(mules_index)
-                k = int(curTime.minute / Intv)
-                mules_ts_logs[mid][k].append((curTime, row['location']))
-        #
-        for mid, ts_logs in mules_ts_logs.items():
-            for k, traj in enumerate(ts_logs):
-                if len(traj) < 2:
-                    continue
-                traj.sort()
-
-
-
-                indi_tra_fpath = opath.join(indi_dpath, '%s-mid%d-k%d.csv' % (prefix, mules_index[mid], k))
-                with open(indi_tra_fpath, 'w') as w_csvfile:
-                    writer = csv.writer(w_csvfile, lineterminator='\n')
-                    new_headers = ['fTime', 'tTime', 'duration', 'location']
-                    writer.writerow(new_headers)
-                    t0, l0 = None, ''
-                    for t1, l1 in traj:
-                        if t0 is None:
-                            t0, l0 = t1, l1
-                        if l1 != l0:
+    for hour in HOUR_9AM_6PM:
+        indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
+        if not opath.exists(indi_dpath):
+            os.mkdir(indi_dpath)
+        for fn in os.listdir(lw_dpath):
+            if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
+                continue
+            prefix = fn[:-len('-20170201.csv')]
+            suffix = fn[-len('20170201.csv'):]
+            mules_ts_logs = {}
+            with open(opath.join(lw_dpath, fn)) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+                    curTime = datetime.datetime.fromtimestamp(time.mktime(t))
+                    mid = row['id']
+                    if mid not in mules_ts_logs:
+                        mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
+                    if mid not in mules_index:
+                        mules_index[mid] = len(mules_index)
+                    k = int(curTime.minute / Intv)
+                    mules_ts_logs[mid][k].append((curTime, row['location']))
+            for mid, ts_logs in mules_ts_logs.items():
+                for k, traj in enumerate(ts_logs):
+                    if len(traj) < 2:
+                        continue
+                    traj.sort()
+                    indi_tra_fpath = opath.join(indi_dpath, '%s-K%d-m%d-%s' % (prefix, k, mules_index[mid], suffix))
+                    with open(indi_tra_fpath, 'w') as w_csvfile:
+                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                        new_headers = ['fTime', 'tTime', 'duration', 'location']
+                        writer.writerow(new_headers)
+                        t0, l0 = None, ''
+                        for t1, l1 in traj:
+                            if t0 is None:
+                                t0, l0 = t1, l1
+                            if l1 != l0:
+                                new_row = [t0, t1, (t1 - t0).seconds, l0]
+                                writer.writerow(new_row)
+                                t0, l0 = t1, l1
+                        if l1 == l0:
                             new_row = [t0, t1, (t1 - t0).seconds, l0]
                             writer.writerow(new_row)
-                            t0, l0 = t1, l1
-                    if l1 == l0:
-                        new_row = [t0, t1, (t1 - t0).seconds, l0]
-                        writer.writerow(new_row)
 
 
 
 if __name__ == '__main__':
     floor = 'Lv4'
-    for dow in [
-                # MON,
-                # TUE,
-                WED,
-                # THR, FRI
-                ]:
-        preprocess_rawTraj(floor, dow)
+    gen_indiTrajectory(floor)
+    #
+    # for dow in [
+    #             # MON,
+    #             # TUE,
+    #             WED,
+    #             # THR, FRI
+    #             ]:
+    #     preprocess_rawTraj(floor, dow)
 
     # get_muleTrajectory(10)
