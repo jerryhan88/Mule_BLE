@@ -140,7 +140,7 @@ def gen_indiTrajectory(floor, dow=WED):
         for fn in os.listdir(lw_dpath):
             if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
                 continue
-            prefix = fn[:-len('-20170201.csv')]
+            prefix = fn[len('traj-'):-len('-20170201.csv')].split
             suffix = fn[-len('20170201.csv'):]
             mules_ts_logs = {}
             with open(opath.join(lw_dpath, fn)) as r_csvfile:
@@ -160,7 +160,7 @@ def gen_indiTrajectory(floor, dow=WED):
                     if len(traj) < 2:
                         continue
                     traj.sort()
-                    indi_tra_fpath = opath.join(indi_dpath, '%s-K%d-m%d-%s' % (prefix, k, mules_index[mid], suffix))
+                    indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mules_index[mid], suffix))
                     with open(indi_tra_fpath, 'w') as w_csvfile:
                         writer = csv.writer(w_csvfile, lineterminator='\n')
                         new_headers = ['fTime', 'tTime', 'duration', 'location']
@@ -178,10 +178,41 @@ def gen_indiTrajectory(floor, dow=WED):
                             writer.writerow(new_row)
 
 
+def aggregate_indiTrajectory(floor, dow=WED):
+    lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    mids = set()
+    for hour in HOUR_9AM_6PM:
+        indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
+        if not opath.exists(indi_dpath):
+            continue
+        for fn in os.listdir(indi_dpath):
+            if not fnmatch.fnmatch(fn, '*.csv'):
+                continue
+            _, _, _, _, _, mid, _ = fn[:-len('.csv')].split('-')
+            mids.add(mid)
+    for hour in HOUR_9AM_6PM:
+        prefix = 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour)
+        indi_dpath = opath.join(lw_dpath, prefix)
+        fns = os.listdir(indi_dpath)
+        for mid in mids:
+            for k in range(N_TIMESLOT):
+                print('%s-K%d-%s-*.csv' % (prefix, k, mid))
+                fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-K%d-%s-*.csv' % (prefix, k, mid))]
+                print(fnsF)
+                # assert False
+
+            #
+
+
+
+
+
+
 
 if __name__ == '__main__':
     floor = 'Lv4'
-    gen_indiTrajectory(floor)
+    # gen_indiTrajectory(floor)
+    aggregate_indiTrajectory(floor, dow=0)
     #
     # for dow in [
     #             # MON,
