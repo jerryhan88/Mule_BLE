@@ -313,6 +313,9 @@ def aggregate_indiTrajectory(floor, dow=WED):
             os.mkdir(indiS_dpath)
         for mid in mids:
             indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-%s.csv' % (fdh, mid))
+            fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-*-%s-*.csv' % (indiTraj_prefix, mid))]
+            if not fnsF:
+                continue
             with open(indiTrajS_fpath, 'w') as w_csvfile:
                 writer = csv.writer(w_csvfile, lineterminator='\n')
                 new_headers = ['date', 'timeslot', 'trajectories']
@@ -320,7 +323,6 @@ def aggregate_indiTrajectory(floor, dow=WED):
             for k in range(N_TIMESLOT):
                 fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-K%d-%s-*.csv' % (indiTraj_prefix, k, mid))]
                 if not fnsF:
-                    os.remove(indiTrajS_fpath)
                     continue
                 for fn in fnsF:
                     _, _, _, _, _, _, yyyymmdd = fn[:-len('.csv')].split('-')
