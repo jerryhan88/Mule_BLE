@@ -335,7 +335,7 @@ def aggregate_indiTrajectory(floor, dow=WED):
                             curLM = str(int(locationID[-4:]))
                             if prevLM is not None:
                                 path = tuple(nx.shortest_path(G, prevLM, curLM))
-                                reversedPath = list(reversed(path))
+                                reversedPath = tuple(reversed(path))
                                 if path not in trajectories and reversedPath not in trajectories:
                                     trajectories.add(path)
                             prevLM = curLM
