@@ -202,6 +202,8 @@ def get_lmPairSP(floor):
                         handle_rb_edges(n0, i0, j0, sh, elist)
                 else:
                     if ';' in cv0:
+                        if '-' not in cv0:
+                            continue
                         n0, others = cv0.split(';')
                         n1, n2 = others.split('-')
                         elist.append((n0, n1))
@@ -491,7 +493,8 @@ def get_p_kmbl(floor, dow=MON, hour=9):
 
 
 if __name__ == '__main__':
-    floor = 'Lv4'
+    floor = 'Lv2'
+    get_gridLayout(floor)
     # gen_indiTrajectory(floor)
     # aggregate_indiTrajectory(floor, dow=0)
     # print(get_beaconInfo(floor))
@@ -501,5 +504,5 @@ if __name__ == '__main__':
 
     # print(len(get_mTraj(floor, dow=MON, hour=9)))
 
-    print(get_p_kmbl(floor, dow=MON, hour=9))
+    # print(get_p_kmbl(floor, dow=MON, hour=9))
 
