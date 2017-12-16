@@ -9,8 +9,7 @@ from dataProcessing import *
 windowX, windowY = 100, 150
 windowW, windowH = 1000, 1000
 floor = 'Lv4'
-
-# nCOLs, nROWs, zones = get_gridLayout(floor)
+dow, hour = 0, 9
 
 
 class Zone(object):
@@ -18,6 +17,10 @@ class Zone(object):
         self.zi, self.zj = zi, zj
         self.belonged_axis, self.axisID = False, None
         self.lmID = None
+
+    def __repr__(self):
+        if self.lmID:
+            return 'lmID(%s)' % self.lmID
 
     def initDrawing(self, xUnit, yUnit):
         self.x_lu, self.y_lu = self.zi * xUnit, self.zj * yUnit
@@ -59,8 +62,42 @@ class Beacon(object):
 
 
 class Mule(object):
-    def __init__(self, mid):
-        self.mid = mid
+    def __init__(self, mid, ts_trajZ):
+        self.mid, self.ts_trajZ = mid, ts_trajZ
+
+    def initDrawing(self):
+        self.trajs = []
+        for ts, trajZ in self.ts_trajZ.items():
+            if ts != '0' :
+                continue
+
+            for pathZ in trajZ:
+                if len(pathZ) < 2:
+                    continue
+                pz = None
+                aTraj = []
+                for z in pathZ:
+                    if pz is None:
+                        pz = z
+                        continue
+                    sx, sy = (pz.x_lu + pz.x_rb) / 2, (pz.y_lu + pz.y_rb) / 2
+                    ex, ey = (z.x_lu + z.x_rb) / 2, (z.y_lu + z.y_rb) / 2
+                    aTraj.append((sx, sy, ex, ey))
+                    pz = z
+                self.trajs.append(aTraj)
+
+    def draw(self, qp):
+        for aTraj in self.trajs:
+            for sx, sy, ex, ey in aTraj:
+                qp.drawLine(sx, sy, ex, ey)
+
+
+
+
+
+
+
+
 
 
 
@@ -94,7 +131,7 @@ class LayoutW(QWidget):
                 self.zones[zi, zj] = z
         #
         self.beacons = {}
-        beacon2landmark, landmark2beacon = get_beaconInfo(floor)
+        beacon2landmark, landmark2beacon = get_beacon2landmark(floor)
         plCovLD = get_plCovLD(floor)
         for beaconID in beacon2landmark:
             z = self.lmID2zone[beacon2landmark[beaconID]]
@@ -102,6 +139,25 @@ class LayoutW(QWidget):
             for l in range(len(PL_RANGE)):
                 b.plCovZ[l] = [self.lmID2zone[lmID] for lmID in plCovLD[beaconID, l]]
             self.beacons[beaconID] = b
+        #
+        mTraj = get_mTraj(floor, dow, hour)
+        self.mules = {}
+        count = 0
+        for mid, ts_trajectories in mTraj.items():
+            ts_trajZ = {}
+            for ts, trajectories in ts_trajectories.items():
+                ts_trajZ[ts] = []
+                for _, paths in trajectories:
+                    for p in paths:
+                        if type(p) == tuple:
+                            ts_trajZ[ts].append([self.lmID2zone[lmID] for lmID in p])
+                        else:
+                            ts_trajZ[ts].append([self.lmID2zone[p]])
+            self.mules[mid] = Mule(mid, ts_trajZ)
+            count += 1
+            print(mid)
+            if count== 3:
+                break
 
 
         self.initUI()
@@ -115,6 +171,9 @@ class LayoutW(QWidget):
             z.initDrawing(self.xUnit, self.yUnit)
         for b in self.beacons.values():
             b.initDrawing(self.xUnit, self.yUnit)
+        for m in self.mules.values():
+            m.initDrawing()
+
         self.setWindowTitle('LayoutViz')
         self.show()
 
@@ -129,6 +188,8 @@ class LayoutW(QWidget):
             z.draw(qp)
         for b in self.beacons.values():
             b.draw(qp)
+        for m in self.mules.values():
+            m.draw(qp)
         #
         for i in range(self.numRows):
             x = self.xUnit * (i + 1)

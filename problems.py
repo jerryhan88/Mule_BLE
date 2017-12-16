@@ -1,4 +1,7 @@
+from random import uniform
 from shapely.geometry import LineString, Point
+#
+from dataProcessing import *
 
 
 def p0():
@@ -74,5 +77,48 @@ def p0():
             'p_kmbl': p_kmbl, 'R': R}
 
 
+
+
+
+def get_initBatteryPower(floor):
+    beacon2landmark = get_beacon2landmark(floor)
+    return [uniform(MIN_BATTERY_POWER, MAX_BATTERY_POWER)for _ in range(len(beacon2landmark))]
+
+
+
+def p_Lv4_Mon_H9():
+    floor, dow, hour = 'Lv4', MON, 9
+    #
+    K = list(range(N_TIMESLOT))
+    #
+    mTraj = get_mTraj(floor, dow, hour)
+    mid_index = {}
+    for i, mid in enumerate(mTraj.keys()):
+        mid_index[mid] = i
+    M = list(range(len(mid_index)))
+    #
+    beacon2landmark = get_beacon2landmark(floor)
+    bid_index = {}
+    for i, beaconID in enumerate(beacon2landmark.keys()):
+        bid_index[beaconID] = i
+    B = list(range(len(bid_index)))
+    c_b = get_initBatteryPower(floor)
+    L = list(range(len(PL_RANGE)))
+    e_l = PL_CUNSUME
+    _p_kmbl = get_p_kmbl(floor, dow, hour)
+    p_kmbl = {}
+    for k, mid, bid, l in _p_kmbl:
+        p_kmbl[k, mid_index[mid], bid_index[bid], l] = _p_kmbl[k, mid, bid, l]
+
+    R = 0.9
+
+    return {'K': K, 'M': M, 'B': B,
+            'c_b': c_b, 'L': L, 'e_l': e_l,
+            'p_kmbl': p_kmbl, 'R': R}
+
+
+
+
+
 if __name__ == '__main__':
-    p0()
+    p_Lv4_Mon_H9()

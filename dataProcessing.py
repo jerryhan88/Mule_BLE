@@ -6,12 +6,15 @@ import networkx as nx
 import pickle
 import pandas as pd
 from xlrd import open_workbook
+from math import sqrt
 
 HOUR_9AM_6PM = [h for h in range(9, 18)]
 MON, TUE, WED, THR, FRI, SAT, SUN = range(7)
 N_TIMESLOT = 4
 Intv = 60 / N_TIMESLOT
-PL_RANGE = [4, 9, 14]
+PL_RANGE = [3, 7, 10]
+PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
+MIN_BATTERY_POWER, MAX_BATTERY_POWER = int((365 * 2) * 0.8), 365 * 2
 
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
@@ -19,29 +22,30 @@ beacons_fpath = opath.join('z_data', 'BeaconLocation.xlsx')
 rawTraj_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
 
 
-def get_beaconInfo(floor):
+def get_beacon2landmark(floor):
     beaconInfo_fpath = opath.join('z_data', 'beaconInfo-%s.pkl' % floor)
     if not opath.exists(beaconInfo_fpath):
         book = open_workbook(beacons_fpath)
         sh = book.sheet_by_name('BriefRepresentation')
-        beacon2landmark, landmark2beacon = {}, {}
+        beacon2landmark = {}
         floor_format = '0' + floor[len('Lv'):] + '0'
+        markedLandmarkID = set()
         for i in range(1, sh.nrows):
             beaconID, locationID = map(str, map(int, [sh.cell(i, 0).value, sh.cell(i, 1).value]))
             lv = locationID[3:6]
             landmarkID = str(int(locationID[-4:]))
+            if landmarkID in markedLandmarkID:
+                continue
             if floor_format == lv:
                 beacon2landmark[beaconID] = landmarkID
-                if landmarkID not in landmark2beacon:
-                    landmark2beacon[landmarkID] = []
-                landmark2beacon[landmarkID].append(beaconID)
+                markedLandmarkID.add(landmarkID)
         with open(beaconInfo_fpath, 'wb') as fp:
-            pickle.dump([beacon2landmark, landmark2beacon], fp)
+            pickle.dump(beacon2landmark, fp)
     else:
         with open(beaconInfo_fpath, 'rb') as fp:
-            beacon2landmark, landmark2beacon = pickle.load(fp)
+            beacon2landmark = pickle.load(fp)
     #
-    return beacon2landmark, landmark2beacon
+    return beacon2landmark
 
 
 def get_gridLayout(floor):
@@ -84,6 +88,9 @@ def get_gridLayout(floor):
 
 
 def get_bzDist(floor):
+    #
+    # Euclidean distance
+    #
     bzDist_fpath = opath.join('z_data', 'bzDist-%s.pkl' % floor)
     if not opath.exists(bzDist_fpath):
         numCols, numRows, grid_lmID = get_gridLayout(floor)
@@ -100,13 +107,13 @@ def get_bzDist(floor):
                     lmID2zone[_lmID] = (zi, zj)
         #
         bzDist = {}
-        beacon2landmark, _ = get_beaconInfo(floor)
+        beacon2landmark = get_beacon2landmark(floor)
         for beaconID in beacon2landmark:
             b_zi, b_zj = lmID2zone[beacon2landmark[beaconID]]
             bzDist[beaconID] = {}
             for zi in range(numCols):
                 for zj in range(numRows):
-                    bzDist[beaconID][zi, zj] = abs(b_zi - zi) + abs(b_zj - zj)
+                    bzDist[beaconID][zi, zj] = sqrt((b_zi - zi) ** 2 + (b_zj - zj) ** 2)
         with open(bzDist_fpath, 'wb') as fp:
             pickle.dump(bzDist, fp)
     else:
@@ -145,9 +152,12 @@ def get_plCovLD(floor):
     return plCovLD
 
 
-def get_landmarkG(floor):
-    landmarkG_fpath = opath.join('z_data', 'landmarkG-%s.pkl' % floor)
-    if not opath.exists(landmarkG_fpath):
+def get_lmPairSP(floor):
+    #
+    # Get all landmark pairs' shortest path
+    #
+    lmPairSP_fpath = opath.join('z_data', 'lmPairSP-%s.pkl' % floor)
+    if not opath.exists(lmPairSP_fpath):
         book = open_workbook(landmarks_fpath)
         sh = book.sheet_by_name('%s' % (floor))
         #
@@ -203,10 +213,39 @@ def get_landmarkG(floor):
         #
         G = nx.Graph()
         G.add_edges_from(elist)
-        nx.write_gpickle(G, landmarkG_fpath)
+        N = G.nodes()
+        lmPairSP = {}
+        for lm1 in N:
+            for lm2 in N:
+                if lm1 == lm2:
+                    continue
+                lmPairSP[lm1, lm2] = tuple(nx.shortest_path(G, lm1, lm2))
+        with open(lmPairSP_fpath, 'wb') as fp:
+            pickle.dump(lmPairSP, fp)
     else:
-        G = nx.read_gpickle(landmarkG_fpath)
-    return G
+        with open(lmPairSP_fpath, 'rb') as fp:
+            lmPairSP = pickle.load(fp)
+    return lmPairSP
+
+
+def get_plCovTraj(floor):
+    plCovTraj_fpath = opath.join('z_data', 'plCovTraj-%s.pkl' % floor)
+    if not opath.exists(plCovTraj_fpath):
+        plCovLD = get_plCovLD(floor)
+        lmPairSP = get_lmPairSP(floor)
+        plCovTraj = {}
+        for (bid, l), lms in plCovLD.items():
+            plCovTraj[bid, l] = []
+            covLM = set(lms)
+            for lmPair, pathSeq in lmPairSP.items():
+                if covLM.intersection(set(pathSeq)):
+                    plCovTraj[bid, l].append(lmPair)
+        with open(plCovTraj_fpath, 'wb') as fp:
+            pickle.dump(plCovTraj, fp)
+    else:
+        with open(plCovTraj_fpath, 'rb') as fp:
+            plCovTraj = pickle.load(fp)
+    return plCovTraj
 
 
 def preprocess_rawTraj(floor, dow=TUE):
@@ -241,6 +280,7 @@ def preprocess_rawTraj(floor, dow=TUE):
 
 def gen_indiTrajectory(floor, dow=WED):
     lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
     mules_index = {}
     for hour in HOUR_9AM_6PM:
         indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
@@ -285,10 +325,12 @@ def gen_indiTrajectory(floor, dow=WED):
                         if l1 == l0:
                             new_row = [t0, t1, (t1 - t0).seconds, l0]
                             writer.writerow(new_row)
+    with open(muleID_fpath, 'wb') as fp:
+        pickle.dump(mules_index, fp)
 
 
 def aggregate_indiTrajectory(floor, dow=WED):
-    G = get_landmarkG(floor)
+    lmPairSP = get_lmPairSP(floor)
     lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
     mids = set()
     for hour in HOUR_9AM_6PM:
@@ -300,7 +342,6 @@ def aggregate_indiTrajectory(floor, dow=WED):
                 continue
             _, _, _, _, _, mid, _ = fn[:-len('.csv')].split('-')
             mids.add(mid)
-
     mids = sorted(list(mids))
     for hour in HOUR_9AM_6PM:
         fdh = '%s-W%d-H%02d' % (floor, dow, hour)
@@ -334,7 +375,7 @@ def aggregate_indiTrajectory(floor, dow=WED):
                             locationID = row['location']
                             curLM = str(int(locationID[-4:]))
                             if prevLM is not None:
-                                path = tuple(nx.shortest_path(G, prevLM, curLM))
+                                path = tuple(lmPairSP[prevLM, curLM])
                                 reversedPath = tuple(reversed(path))
                                 if path not in trajectories and reversedPath not in trajectories:
                                     trajectories.add(path)
@@ -351,7 +392,7 @@ def get_mTraj(floor, dow=MON, hour=9):
     fdh = '%s-W%d-H%02d' % (floor, dow, hour)
     lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
     indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
-    mTraj_fpath = opath.join(indiS_dpath, '_%s.pkl' % fdh)
+    mTraj_fpath = opath.join(indiS_dpath, '_indiTrajS-%s.pkl' % fdh)
     if not opath.exists(mTraj_fpath):
         #
         # Apply filtering first
@@ -377,7 +418,7 @@ def get_mTraj(floor, dow=MON, hour=9):
             with open(opath.join(indiS_dpath, fn)) as r_csvfile:
                     reader = csv.DictReader(r_csvfile)
                     for row in reader:
-                        _date, ts = row['date'], row['timeslot']
+                        _date, ts = row['date'], int(row['timeslot'])
                         trajectories = eval(row['trajectories'])
                         if ts not in mTraj[mid]:
                             mTraj[mid][ts] = []
@@ -390,11 +431,61 @@ def get_mTraj(floor, dow=MON, hour=9):
     return mTraj
 
 
+def get_p_kmbl(floor, dow=MON, hour=9):
+    p_kmbl_fpath = opath.join('z_data', 'p_kmbl-%s.pkl' % floor)
+    if not opath.exists(p_kmbl_fpath):
+        p_kmbl = {}
+        fn = opath.basename(rawTraj_fpath)
+        _, _, _year, _month, _day = fn[:-len('.csv.gz')].split('_')
+        next_month = int(_month) + 1
+        dow_count = 0
+        dt = datetime.datetime(*map(int, [_year, _month, _day]))
+        while dt.month < next_month:
+            if dt.weekday() == dow:
+                dow_count += 1
+            dt += datetime.timedelta(days=1)
+        #
+        mTraj = get_mTraj(floor, dow, hour)
+        plCovLD = get_plCovLD(floor)
+        for mid in mTraj:
+            for k in range(N_TIMESLOT):
+                day_lms = []
+                if k in mTraj[mid]:
+                    for _date, trajectories in mTraj[mid][k]:
+                        lms = set()
+                        for aTrajectory in trajectories:
+                            if type(aTrajectory) == tuple:
+                                lms = lms.union(set(aTrajectory))
+                            else:
+                                lms = lms.union([aTrajectory])
+                        day_lms.append(lms)
+                for (bid, l), lms0 in plCovLD.items():
+                    covLM = set(lms0)
+                    covCount = 0
+                    for lm1 in day_lms:
+                        if covLM.intersection(lm1):
+                            covCount += 1
+                    p_kmbl[k, mid, bid, l] = covCount / dow_count
+        with open(p_kmbl_fpath, 'wb') as fp:
+            pickle.dump(p_kmbl, fp)
+    else:
+        with open(p_kmbl_fpath, 'rb') as fp:
+            p_kmbl = pickle.load(fp)
+    #
+    return p_kmbl
+
+
+
 if __name__ == '__main__':
     floor = 'Lv4'
     # gen_indiTrajectory(floor)
     # aggregate_indiTrajectory(floor, dow=0)
     # print(get_beaconInfo(floor))
     # print(get_plCovLD(floor))
-    print(get_mTraj(floor, dow=MON, hour=9))
+    # get_plCovTraj(floor)
+
+
+    # print(len(get_mTraj(floor, dow=MON, hour=9)))
+
+    print(get_p_kmbl(floor, dow=MON, hour=9))
 

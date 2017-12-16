@@ -6,7 +6,7 @@ random.seed(64)
 NUM_POPULATION = 20
 MIN_OBJ1 = -100000
 MAX_OBJ2 = 100000
-NGEN = 500
+NGEN = 100
 
 
 class Individual(object):
@@ -50,8 +50,6 @@ class Individual(object):
         c.g1 = self.g1[:]
         c.g2 = self.g2[:]
         return c
-
-
 
 def genPopulation(inputs):
     population = []
@@ -156,8 +154,9 @@ def run(inputs):
 
 
 def test():
-    from problems import p0
-    inputs = p0()
+    from problems import p0, p_Lv4_Mon_H9
+    # inputs = p0()
+    inputs = p_Lv4_Mon_H9()
     run(inputs)
 
 
