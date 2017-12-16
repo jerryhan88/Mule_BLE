@@ -19,7 +19,8 @@ MIN_BATTERY_POWER, MAX_BATTERY_POWER = int((365 * 2) * 0.8), 365 * 2
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
 beacons_fpath = opath.join('z_data', 'BeaconLocation.xlsx')
-rawTraj_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
+rawTraj2_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
+rawTraj3_fpath = opath.join('z_data', 'location_archival_2017_3_1.csv.gz')
 
 
 def get_beacon2landmark(floor):
@@ -248,11 +249,24 @@ def get_plCovTraj(floor):
     return plCovTraj
 
 
-def preprocess_rawTraj(floor, dow=TUE):
+def get_base_dpath(month):
+    if month == 2:
+        base_dpath = opath.join('z_data', 'M2')
+    else:
+        assert month == 3
+        base_dpath = opath.join('z_data', 'M3')
+    if not opath.exists(base_dpath):
+        os.mkdir(base_dpath)
+    return base_dpath
+
+
+def preprocess_rawTraj(month, floor, dow=TUE):
+    base_dpath = get_base_dpath(month)
+    rawTraj_fpath = rawTraj2_fpath if month == 2 else rawTraj3_fpath
+    traj_fw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     floor_format = '0' + floor[len('Lv'):] + '0'
-    dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
-    if not opath.exists(dpath):
-        os.mkdir(dpath)
+    if not opath.exists(traj_fw_dpath):
+        os.mkdir(traj_fw_dpath)
     with gzip.open(rawTraj_fpath, 'rt') as r_csvfile:
         reader = csv.DictReader(r_csvfile)
         for row in reader:
@@ -266,7 +280,7 @@ def preprocess_rawTraj(floor, dow=TUE):
             if floor_format != lv:
                 continue
             lv = 'Lv%s' % lv[1:-1]
-            fpath = opath.join(dpath,
+            fpath = opath.join(traj_fw_dpath,
                                'traj-%s-W%d-H%02d-%d%02d%02d.csv' % (lv, dow, t.tm_hour, t.tm_year, t.tm_mon, t.tm_mday))
             if not opath.exists(fpath):
                 with open(fpath, 'w') as w_csvfile:
@@ -435,7 +449,7 @@ def get_p_kmbl(floor, dow=MON, hour=9):
     p_kmbl_fpath = opath.join('z_data', 'p_kmbl-%s.pkl' % floor)
     if not opath.exists(p_kmbl_fpath):
         p_kmbl = {}
-        fn = opath.basename(rawTraj_fpath)
+        fn = opath.basename(rawTraj2_fpath)
         _, _, _year, _month, _day = fn[:-len('.csv.gz')].split('_')
         next_month = int(_month) + 1
         dow_count = 0
