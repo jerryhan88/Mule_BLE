@@ -1,5 +1,4 @@
 import random
-import numpy as np
 
 
 random.seed(64)
@@ -39,8 +38,6 @@ class Individual(object):
                 if 1 - xProb < self.inputs['R']:
                     is_feasible = False
                     break
-            if is_feasible:
-                break
         if is_feasible:
             self.obj1 = min_rb
             self.obj2 = sum(self.g2)
@@ -97,11 +94,6 @@ def selInds(prevGen, newGen):
                     break
         if not efficient:
             is_efficient[i] = efficient
-    # objectives = [[-ind.obj1, ind.obj2] for ind in cp]
-    # objectives = np.array(objectives)
-    # is_efficient = np.ones(objectives.shape[0], dtype=bool)
-    # for i, c in enumerate(objectives):
-    #     is_efficient[i] = np.all(np.any(objectives >= c, axis=1))
     selected_individuals = set([i for i, v in enumerate(is_efficient) if v])
     print('\t', 'nd', [(cp[i], cp[i].obj1, cp[i].obj2) for i in selected_individuals if cp[i].obj1 > MIN_OBJ1 and cp[i].obj2 < MAX_OBJ2])
     if len(selected_individuals) < NUM_POPULATION:
@@ -114,8 +106,43 @@ def selInds(prevGen, newGen):
     return [cp[i] for i in selected_individuals]
 
 
-def localSearch():
-    pass
+def localSearch(prevPopulation):
+    newPopulation = []
+    for ind0 in prevPopulation:
+        ind1 = neighborhoodSearch(ind0)
+        while ind1 is not None:
+            ind0 = ind1
+            ind1 = neighborhoodSearch(ind0)
+        newPopulation.append(ind0)
+    return newPopulation
+
+
+def neighborhoodSearch(ind0):
+    chromosomeLen = len(ind0.g1) + len(ind0.g2)
+    for i in range(chromosomeLen):
+        if i < len(ind0.g1):
+            cur_l = ind0.g1[i]
+            for l in ind0.inputs['L']:
+                if cur_l == l:
+                    continue
+                ind1 = ind0.clone()
+                ind1.g1[i] = l
+                ind1.evaluation()
+                if ind0.obj1 < ind1.obj1 and ind0.obj2 > ind1.obj2:
+                    return ind1
+        else:
+            j = i - len(ind0.g1)
+            cur_m = ind0.g2[j]
+            for m in range(2):
+                if cur_m == m:
+                    continue
+                ind1 = ind0.clone()
+                ind1.g2[j] = m
+                ind1.evaluation()
+                if ind0.obj1 < ind1.obj1 and ind0.obj2 > ind1.obj2:
+                    return ind1
+    else:
+        return None
 
 
 def run(inputs):
@@ -125,16 +152,13 @@ def run(inputs):
     NOFF = int(NUM_POPULATION * 0.8)
     for gn in range(NGEN):
         print('GN', gn)
-        # print('\t', population)
+        #
+        population = localSearch(population)
+        #
         obj1_values, obj2_values = [], []
         for ind in population:
             obj1_values.append(ind.obj1)
             obj2_values.append(ind.obj2)
-        avg_obj1, avg_obj2 = map(np.average, [obj1_values, obj2_values])
-        max_obj1 = np.max(obj1_values)
-        min_obj2 = np.min(obj2_values)
-
-        # print('\t', max_obj1, min_obj2, avg_obj1, avg_obj2)
         print('\t', [(ind, ind.obj1, ind.obj2) for ind in population if ind.obj1 > MIN_OBJ1 and ind.obj2 < MAX_OBJ2])
 
         offspring = random.sample([ind.clone() for ind in population], NOFF)
@@ -155,11 +179,10 @@ def run(inputs):
 
 def test():
     from problems import p0, p_Lv4_Mon_H9
-    # inputs = p0()
-    inputs = p_Lv4_Mon_H9()
+    inputs = p0()
+    # inputs = p_Lv4_Mon_H9()
     run(inputs)
 
 
 if __name__ == '__main__':
     test()
-    pass

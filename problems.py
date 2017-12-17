@@ -4,6 +4,9 @@ from shapely.geometry import LineString, Point
 from dataProcessing import *
 
 
+MIN_OBJ1 = -100000
+MAX_OBJ2 = 100000
+
 def p0():
     canvasSize = (800, 800)
     beaconPos = [(200, 200), (300, 400), (650, 580)]
@@ -76,11 +79,21 @@ def p0():
             'c_b': c_b, 'L': L, 'e_l': e_l,
             'p_kmbl': p_kmbl, 'R': R}
 
+def order_mules(inputs):
+    probSum_m = []
+    for m in inputs['M']:
+        probSum = 0
+        for k in inputs['K']:
+            for b in inputs['B']:
+                for l in inputs['L']:
+                    probSum += inputs['p_kmbl'][k, m, b, l]
+        probSum_m.append((probSum, m))
+    probSum_m.sort(reverse=True)
+    return [m for _, m in probSum_m]
 
 
 
-
-def get_initBatteryPower(floor):
+def get_ranInitBatteryPower(floor):
     beacon2landmark = get_beacon2landmark(floor)
     return [uniform(MIN_BATTERY_POWER, MAX_BATTERY_POWER)for _ in range(len(beacon2landmark))]
 
@@ -102,7 +115,7 @@ def p_Lv4_Mon_H9():
     for i, beaconID in enumerate(beacon2landmark.keys()):
         bid_index[beaconID] = i
     B = list(range(len(bid_index)))
-    c_b = get_initBatteryPower(floor)
+    c_b = get_ranInitBatteryPower(floor)
     L = list(range(len(PL_RANGE)))
     e_l = PL_CUNSUME
     _p_kmbl = get_p_kmbl(floor, dow, hour)

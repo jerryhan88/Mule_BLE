@@ -14,7 +14,7 @@ N_TIMESLOT = 4
 Intv = 60 / N_TIMESLOT
 PL_RANGE = [3, 7, 10]
 PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
-MIN_BATTERY_POWER, MAX_BATTERY_POWER = int((365 * 2) * 0.8), 365 * 2
+MIN_BATTERY_POWER, MAX_BATTERY_POWER = 980, 1000
 
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
@@ -346,9 +346,10 @@ def gen_indiTrajectory(month, floor, dow=WED):
         pickle.dump(mules_index, fp)
 
 
-def aggregate_indiTrajectory(floor, dow=WED):
+def aggregate_indiTrajectory(month, floor, dow=WED):
+    base_dpath = get_base_dpath(month)
     lmPairSP = get_lmPairSP(floor)
-    lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     mids = set()
     for hour in HOUR_9AM_6PM:
         indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
