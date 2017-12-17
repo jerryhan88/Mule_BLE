@@ -298,7 +298,7 @@ def gen_indiTrajectory(month, floor, dow=WED):
     base_dpath = get_base_dpath(month)
     lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
-    mules_index = {}
+    mule_index, index_mule = {}, {}
     for hour in HOUR_9AM_6PM:
         indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
         if not opath.exists(indi_dpath):
@@ -317,8 +317,9 @@ def gen_indiTrajectory(month, floor, dow=WED):
                     mid = row['id']
                     if mid not in mules_ts_logs:
                         mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
-                    if mid not in mules_index:
-                        mules_index[mid] = len(mules_index)
+                    if mid not in mule_index:
+                        mule_index[mid] = len(mule_index)
+                        index_mule[len(mule_index)] = mid
                     k = int(curTime.minute / Intv)
                     mules_ts_logs[mid][k].append((curTime, row['location']))
             for mid, ts_logs in mules_ts_logs.items():
@@ -326,7 +327,7 @@ def gen_indiTrajectory(month, floor, dow=WED):
                     if len(traj) < 2:
                         continue
                     traj.sort()
-                    indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mules_index[mid], suffix))
+                    indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mule_index[mid], suffix))
                     with open(indi_tra_fpath, 'w') as w_csvfile:
                         writer = csv.writer(w_csvfile, lineterminator='\n')
                         new_headers = ['fTime', 'tTime', 'duration', 'location']
@@ -343,7 +344,7 @@ def gen_indiTrajectory(month, floor, dow=WED):
                             new_row = [t0, t1, (t1 - t0).seconds, l0]
                             writer.writerow(new_row)
     with open(muleID_fpath, 'wb') as fp:
-        pickle.dump(mules_index, fp)
+        pickle.dump([mule_index, index_mule], fp)
 
 
 def aggregate_indiTrajectory(month, floor, dow=WED):
