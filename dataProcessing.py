@@ -294,8 +294,9 @@ def preprocess_rawTraj(month, floor, dow=TUE):
                 writer.writerow([row['time'], row['id'], row['location']])
 
 
-def gen_indiTrajectory(floor, dow=WED):
-    lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+def gen_indiTrajectory(month, floor, dow=WED):
+    base_dpath = get_base_dpath(month)
+    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
     mules_index = {}
     for hour in HOUR_9AM_6PM:
