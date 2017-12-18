@@ -408,8 +408,9 @@ def aggregate_indiTrajectory(month, floor, dow=WED):
 
 
 def get_mTraj(floor, dow=MON, hour=9):
+    base_dpath = get_base_dpath(2)
     fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-    lw_dpath = opath.join('z_data', 'traj-%s-W%d' % (floor, dow))
+    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
     mTraj_fpath = opath.join(indiS_dpath, '_indiTrajS-%s.pkl' % fdh)
     if not opath.exists(mTraj_fpath):
