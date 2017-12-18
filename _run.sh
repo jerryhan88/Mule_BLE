@@ -29,13 +29,13 @@
 #done
 #
 
-for i in {0..4}; do
-    for j in {9..17}; do
-        python3 -c "from dataProcessing import get_mTraj; get_mTraj('Lv4', $i, $j)" &
-    done
-done
+#for i in {0..4}; do
+#    for j in {9..17}; do
+#        python3 -c "from dataProcessing import get_mTraj; get_mTraj('Lv4', $i, $j)" &
+#    done
+#done
 
 
 #python3 -c "from dataProcessing import arrange_M3_muleTraj; arrange_M3_muleTraj('Lv2')" &
 
-#python3 -c "from dataProcessing import arrange_M3_muleTraj; arrange_M3_muleTraj('Lv4')" &
+python3 -c "from dataProcessing import arrange_M3_muleTraj; arrange_M3_muleTraj('Lv4')" &

@@ -515,9 +515,6 @@ def arrange_M3_muleTraj(floor):
         lw_dpath3 = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
         mule_index2, index_mule2 = get_midMule(2, floor, dow)
         mule_index3, index_mule3 = get_midMule(3, floor, dow)
-        print(index_mule2)
-        assert False
-
         for hour in range(9, 18):
             mTraj2 = get_mTraj(floor, dow, hour)
             fdh = '%s-W%d-H%02d' % (floor, dow, hour)
@@ -540,11 +537,11 @@ def arrange_M3_muleTraj(floor):
                         if not opath.exists(fpath):
                             with open(fpath, 'w') as w_csvfile:
                                 writer = csv.writer(w_csvfile, lineterminator='\n')
-                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'trajectories']
+                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'trajectories', 'mid_M2', 'mid_M3']
                                 writer.writerow(new_headers)
                         with open(fpath, 'a') as w_csvfile:
                             writer = csv.writer(w_csvfile, lineterminator='\n')
-                            writer.writerow([_date, hour, row['timeslot'], ori_mid, row['trajectories']])
+                            writer.writerow([_date, hour, row['timeslot'], ori_mid, row['trajectories'], mid2, mid3])
 
 
 if __name__ == '__main__':
