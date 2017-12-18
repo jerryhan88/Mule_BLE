@@ -31,7 +31,7 @@
 
 for i in {0..4}; do
     for j in {9..17}; do
-        python3 -c "from dataProcessing import get_mTraj; get_mTraj('Lv2', $i, $j)" &
+        python3 -c "from dataProcessing import get_mTraj; get_mTraj('Lv4', $i, $j)" &
     done
 done
 
