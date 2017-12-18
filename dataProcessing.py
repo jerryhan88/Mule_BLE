@@ -511,20 +511,20 @@ def arrange_M3_muleTraj(floor):
         os.mkdir(fTraj_dpath)
     #
     for dow in [MON, TUE, WED, THR, FRI]:
-        mTraj2 = get_mTraj(floor, dow, hour=10)
+        lw_dpath3 = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
         mule_index2, index_mule2 = get_midMule(2, floor, dow)
         mule_index3, index_mule3 = get_midMule(3, floor, dow)
-        for mid in mTraj2:
-            mid2 = int(mid[len('m'):])
-            ori_mid = index_mule2[mid2]
-            if ori_mid not in mule_index3:
-                continue
-            mid3 = mule_index3[ori_mid]
+        for hour in range(9, 18):
+            mTraj2 = get_mTraj(floor, dow, hour)
+            fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+            indiS_dpath = opath.join(lw_dpath3, 'indiTrajS-%s' % fdh)
             #
-            lw_dpath = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
-            for hour in range(9, 18):
-                fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-                indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
+            for mid in mTraj2:
+                mid2 = int(mid[len('m'):])
+                ori_mid = index_mule2[mid2]
+                if ori_mid not in mule_index3:
+                    continue
+                mid3 = mule_index3[ori_mid]
                 indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-m%d.csv' % (fdh, mid3))
                 if not opath.exists(indiTrajS_fpath):
                     continue
