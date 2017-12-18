@@ -318,8 +318,9 @@ def gen_indiTrajectory(month, floor, dow=WED):
                     if mid not in mules_ts_logs:
                         mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
                     if mid not in mule_index:
-                        mule_index[mid] = len(mule_index)
-                        index_mule[len(mule_index)] = mid
+                        _id = len(mule_index)
+                        mule_index[mid] = _id
+                        index_mule[_id] = mid
                     k = int(curTime.minute / Intv)
                     mules_ts_logs[mid][k].append((curTime, row['location']))
             for mid, ts_logs in mules_ts_logs.items():
@@ -514,6 +515,9 @@ def arrange_M3_muleTraj(floor):
         lw_dpath3 = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
         mule_index2, index_mule2 = get_midMule(2, floor, dow)
         mule_index3, index_mule3 = get_midMule(3, floor, dow)
+        print(index_mule2)
+        assert False
+
         for hour in range(9, 18):
             mTraj2 = get_mTraj(floor, dow, hour)
             fdh = '%s-W%d-H%02d' % (floor, dow, hour)
