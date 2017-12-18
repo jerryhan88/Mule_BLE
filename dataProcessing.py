@@ -407,8 +407,8 @@ def aggregate_indiTrajectory(month, floor, dow=WED):
                         writer.writerow(new_row)
 
 
-def get_mTraj(floor, dow=MON, hour=9):
-    base_dpath = get_base_dpath(2)
+def get_mTraj(month, floor, dow=MON, hour=9):
+    base_dpath = get_base_dpath(month)
     fdh = '%s-W%d-H%02d' % (floor, dow, hour)
     lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
@@ -497,18 +497,23 @@ def get_p_kmbl(floor, dow=MON, hour=9):
     return p_kmbl
 
 
+def filter_M3_muleTraj(floor, dow=MON, hour=9):
+    mTraj = get_mTraj(floor, dow=MON, hour=9)
+
+    print(len(mTraj))
+
+    base_dpath = get_base_dpath(2)
+    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+    pass
+
+
+
+
 
 if __name__ == '__main__':
     floor = 'Lv2'
-    get_gridLayout(floor)
-    # gen_indiTrajectory(floor)
-    # aggregate_indiTrajectory(floor, dow=0)
-    # print(get_beaconInfo(floor))
-    # print(get_plCovLD(floor))
-    # get_plCovTraj(floor)
+    # get_gridLayout(floor)
 
+    filter_M3_muleTraj(floor, dow=MON, hour=9)
 
-    # print(len(get_mTraj(floor, dow=MON, hour=9)))
-
-    # print(get_p_kmbl(floor, dow=MON, hour=9))
 
