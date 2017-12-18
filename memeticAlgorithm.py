@@ -175,6 +175,16 @@ def run(inputs):
             ind.evaluation()
         population = selInds(population, offspring)
     print('LAST')
+    paretoFront = {}
+    for ind in population:
+        k = (ind.obj1, ind.obj2)
+        if k in paretoFront:
+            ind0 = paretoFront[k]
+            if sum(ind.g1) < sum(ind0.g1):
+                paretoFront[k] = ind
+        else:
+            paretoFront[k] = ind
+    print(paretoFront)
 
 
 def test():

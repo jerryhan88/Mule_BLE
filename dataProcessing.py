@@ -451,7 +451,9 @@ def get_mTraj(floor, dow=MON, hour=9):
 
 
 def get_p_kmbl(floor, dow=MON, hour=9):
-    p_kmbl_fpath = opath.join('z_data', 'p_kmbl-%s.pkl' % floor)
+    base_dpath = get_base_dpath(2)
+    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+    p_kmbl_fpath = opath.join(base_dpath, 'p_kmbl-%s.pkl' % fdh)
     if not opath.exists(p_kmbl_fpath):
         p_kmbl = {}
         fn = opath.basename(rawTraj2_fpath)
