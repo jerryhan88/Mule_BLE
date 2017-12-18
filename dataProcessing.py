@@ -407,8 +407,8 @@ def aggregate_indiTrajectory(month, floor, dow=WED):
                         writer.writerow(new_row)
 
 
-def get_mTraj(month, floor, dow=MON, hour=9):
-    base_dpath = get_base_dpath(month)
+def get_mTraj(floor, dow=MON, hour=9):
+    base_dpath = get_base_dpath(2)
     fdh = '%s-W%d-H%02d' % (floor, dow, hour)
     lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
     indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
@@ -497,23 +497,56 @@ def get_p_kmbl(floor, dow=MON, hour=9):
     return p_kmbl
 
 
-def filter_M3_muleTraj(floor, dow=MON, hour=9):
-    mTraj = get_mTraj(floor, dow=MON, hour=9)
-
-    print(len(mTraj))
-
-    base_dpath = get_base_dpath(2)
-    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-    pass
+def get_midMule(month, floor, dow):
+    lw_dpath = opath.join(get_base_dpath(month), 'traj-%s-W%d' % (floor, dow))
+    muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
+    with open(muleID_fpath, 'rb') as fp:
+        mule_index, index_mule = pickle.load(fp)
+    return mule_index, index_mule
 
 
-
+def arrange_M3_muleTraj(floor):
+    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj')
+    if not opath.exists(fTraj_dpath):
+        os.mkdir(fTraj_dpath)
+    #
+    for dow in [MON, TUE, WED, THR, FRI]:
+        mTraj2 = get_mTraj(floor, dow, hour=10)
+        mule_index2, index_mule2 = get_midMule(2, floor, dow)
+        mule_index3, index_mule3 = get_midMule(3, floor, dow)
+        for mid in mTraj2:
+            mid2 = int(mid[len('m'):])
+            ori_mid = index_mule2[mid2]
+            if ori_mid not in mule_index3:
+                continue
+            mid3 = mule_index3[ori_mid]
+            #
+            lw_dpath = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
+            for hour in range(9, 18):
+                fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+                indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
+                indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-m%d.csv' % (fdh, mid3))
+                if not opath.exists(indiTrajS_fpath):
+                    continue
+                with open(indiTrajS_fpath) as r_csvfile:
+                    reader = csv.DictReader(r_csvfile)
+                    for row in reader:
+                        _date = row['date']
+                        fpath = opath.join(fTraj_dpath, 'fTraj-%s.csv' % _date)
+                        if not opath.exists(fpath):
+                            with open(fpath, 'w') as w_csvfile:
+                                writer = csv.writer(w_csvfile, lineterminator='\n')
+                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'trajectories']
+                                writer.writerow(new_headers)
+                        with open(fpath, 'a') as w_csvfile:
+                            writer = csv.writer(w_csvfile, lineterminator='\n')
+                            writer.writerow([_date, hour, row['timeslot'], ori_mid, row['trajectories']])
 
 
 if __name__ == '__main__':
-    floor = 'Lv2'
+    floor = 'Lv4'
     # get_gridLayout(floor)
 
-    filter_M3_muleTraj(floor, dow=MON, hour=9)
+    arrange_M3_muleTraj(floor)
 
 
