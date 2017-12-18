@@ -537,11 +537,11 @@ def arrange_M3_muleTraj(floor):
                         if not opath.exists(fpath):
                             with open(fpath, 'w') as w_csvfile:
                                 writer = csv.writer(w_csvfile, lineterminator='\n')
-                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'trajectories', 'mid_M2', 'mid_M3']
+                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'mid_M2', 'mid_M3', 'trajectories']
                                 writer.writerow(new_headers)
                         with open(fpath, 'a') as w_csvfile:
                             writer = csv.writer(w_csvfile, lineterminator='\n')
-                            writer.writerow([_date, hour, row['timeslot'], ori_mid, row['trajectories'], mid2, mid3])
+                            writer.writerow([_date, hour, row['timeslot'], ori_mid, mid2, mid3, row['trajectories']])
 
 
 if __name__ == '__main__':
