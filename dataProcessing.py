@@ -506,7 +506,7 @@ def get_midMule(month, floor, dow):
 
 
 def arrange_M3_muleTraj(floor):
-    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj')
+    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
     if not opath.exists(fTraj_dpath):
         os.mkdir(fTraj_dpath)
     #
