@@ -88,7 +88,7 @@ def run_memeticAlgorithm(dow, hour, etc):
     with open(fpath, 'wb') as fp:
         pickle.dump([inputs, bid_index], fp)
     evol_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
-    with open(evolution, 'w') as w_csvfile:
+    with open(evol_fpath, 'w') as w_csvfile:
         writer = csv.writer(w_csvfile, lineterminator='\n')
         new_header = ['generation', 'paretoFront']
         writer.writerow(new_header)
