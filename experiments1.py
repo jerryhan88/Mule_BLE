@@ -18,7 +18,7 @@ from memeticAlgorithm import run as ma_run
 
 
 floor = 'Lv2'
-numGeneration = 300
+numGeneration = 100
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
 probCrossover = 0.5
@@ -77,15 +77,25 @@ def run_memeticAlgorithm(dow, hour, etc):
     inputs['M'] = M
     inputs['p_kmbl'] = p_kmbl
     inputs['c_b'] = c_b
-    paretoFront = ma_run(inputs,
+    paretoFront, evolution = ma_run(inputs,
                          numGeneration, numPopulation, numOffsprings, probCrossover, probMutation)
     #
     ind = random.choice(list(paretoFront.values()))
     pl = ind.g1
     #
-    fpath = opath.join(maProb_dpath, '%sH%02d.pkl' % (etc['date'], hour))
+    prefix = '%sH%02d' % (etc['date'], hour)
+    fpath = opath.join(maProb_dpath, '%s.pkl' % prefix)
+    evol_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
     with open(fpath, 'wb') as fp:
         pickle.dump([inputs, bid_index], fp)
+    for i, objs in enumerate(evolution):
+        objs = list(objs)
+        objs.sort()
+        new_row = [i + 1, objs]
+        with open(evol_fpath, 'a') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            writer.writerow(new_row)
+    #
     return pl
 
 

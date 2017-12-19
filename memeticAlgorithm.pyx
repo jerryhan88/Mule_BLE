@@ -149,8 +149,6 @@ def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, experiment2=False):
     population = genPopulation(inputs, N_p)
     evolution = []
     for gn in range(N_g):
-        # print('GN', gn)
-        #
         population = localSearch(population)
         #
         obj1_values, obj2_values = [], []
@@ -177,20 +175,17 @@ def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, experiment2=False):
                 objs.add(k)
             evolution.append(objs)
     #
-    if experiment2:
-        return evolution
-    else:
-        paretoFront = {}
-        for ind in selInds(population, [], N_p, ndSolSelection=True):
-            k = (ind.obj1, ind.obj2)
-            if k in paretoFront:
-                ind0 = paretoFront[k]
-                if sum(ind.g1) < sum(ind0.g1):
-                    paretoFront[k] = ind
-            else:
+    paretoFront = {}
+    for ind in selInds(population, [], N_p, ndSolSelection=True):
+        k = (ind.obj1, ind.obj2)
+        if k in paretoFront:
+            ind0 = paretoFront[k]
+            if sum(ind.g1) < sum(ind0.g1):
                 paretoFront[k] = ind
-        #
-        return paretoFront
+        else:
+            paretoFront[k] = ind
+    #
+    return paretoFront, evolution
 
 
 def test():

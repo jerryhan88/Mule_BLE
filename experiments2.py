@@ -29,6 +29,8 @@ def run():
     for fn in os.listdir(maProb_dpath):
         if not fnmatch.fnmatch(fn, '*.pkl'):
             continue
+        if 'MA' in fn:
+            continue
         # print(fn)
         prefix = fn[:-len('.pkl')]
         ifpath = opath.join(maProb_dpath, fn)
@@ -47,20 +49,20 @@ def run():
                 writer = csv.writer(w_csvfile, lineterminator='\n')
                 writer.writerow(new_row)
         #
-        ma_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
-        with open(ma_fpath, 'w') as w_csvfile:
-            writer = csv.writer(w_csvfile, lineterminator='\n')
-            new_header = ['generation', 'paretoFront']
-            writer.writerow(new_header)
-        evolution = ma_run(inputs,
-                             numGeneration, numPopulation, numOffsprings, probCrossover, probMutation, experiment2=True)
-        for i, objs in enumerate(evolution):
-            objs = list(objs)
-            objs.sort()
-            new_row = [i + 1, objs]
-            with open(ma_fpath, 'a') as w_csvfile:
-                writer = csv.writer(w_csvfile, lineterminator='\n')
-                writer.writerow(new_row)
+        # ma_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
+        # with open(ma_fpath, 'w') as w_csvfile:
+        #     writer = csv.writer(w_csvfile, lineterminator='\n')
+        #     new_header = ['generation', 'paretoFront']
+        #     writer.writerow(new_header)
+        # evolution = ma_run(inputs,
+        #                      numGeneration, numPopulation, numOffsprings, probCrossover, probMutation, experiment2=True)
+        # for i, objs in enumerate(evolution):
+        #     objs = list(objs)
+        #     objs.sort()
+        #     new_row = [i + 1, objs]
+        #     with open(ma_fpath, 'a') as w_csvfile:
+        #         writer = csv.writer(w_csvfile, lineterminator='\n')
+        #         writer.writerow(new_row)
 
 
 if __name__ == '__main__':
