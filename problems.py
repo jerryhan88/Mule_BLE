@@ -102,7 +102,23 @@ def get_ranInitBatteryPower(floor):
 def p_Lv4_Mon_H9():
     floor, dow, hour = 'Lv4', MON, 9
     #
+    return read_problem(floor, dow, hour)
+
+
+def read_problem(floor, dow, hour):
+    beacon2landmark = get_beacon2landmark(floor)
+    bid_index = {}
+    for i, beaconID in enumerate(beacon2landmark.keys()):
+        bid_index[beaconID] = i
+    B = list(range(len(bid_index)))
+    c_b = get_ranInitBatteryPower(floor)
+    #
+    L = list(range(len(PL_RANGE)))
+    e_l = PL_CUNSUME
+    #
     K = list(range(N_TIMESLOT))
+    #
+    R = 0.9
     #
     mTraj = get_mTraj(floor, dow, hour)
     mid_index = {}
@@ -110,25 +126,14 @@ def p_Lv4_Mon_H9():
         mid_index[mid] = i
     M = list(range(len(mid_index)))
     #
-    beacon2landmark = get_beacon2landmark(floor)
-    bid_index = {}
-    for i, beaconID in enumerate(beacon2landmark.keys()):
-        bid_index[beaconID] = i
-    B = list(range(len(bid_index)))
-    c_b = get_ranInitBatteryPower(floor)
-    L = list(range(len(PL_RANGE)))
-    e_l = PL_CUNSUME
     _p_kmbl = get_p_kmbl(floor, dow, hour)
     p_kmbl = {}
     for k, mid, bid, l in _p_kmbl:
         p_kmbl[k, mid_index[mid], bid_index[bid], l] = _p_kmbl[k, mid, bid, l]
-
-    R = 0.9
-
+    #
     return {'K': K, 'M': M, 'B': B,
             'c_b': c_b, 'L': L, 'e_l': e_l,
             'p_kmbl': p_kmbl, 'R': R}
-
 
 
 

@@ -2,10 +2,9 @@ import random
 
 
 random.seed(64)
-NUM_POPULATION = 20
+
 MIN_OBJ1 = -100000
 MAX_OBJ2 = 100000
-NGEN = 100
 
 
 class Individual(object):
@@ -16,7 +15,7 @@ class Individual(object):
         self.obj1, self.obj2 = MIN_OBJ1, MAX_OBJ2
 
     def __repr__(self):
-        return '|%s|%s' % (''.join(['%d' % v for v in self.g1]), ''.join(['%d' % v for v in self.g2]))
+        return '|%s|%s|' % (''.join(['%d' % v for v in self.g1]), ''.join(['%d' % v for v in self.g2]))
 
     def init_gene(self):
         self.g1 = [random.randrange(len(self.inputs['L'])) for _ in range(len(self.inputs['B']))]
@@ -48,9 +47,9 @@ class Individual(object):
         c.g2 = self.g2[:]
         return c
 
-def genPopulation(inputs):
+def genPopulation(inputs, Np):
     population = []
-    for _ in range(NUM_POPULATION):
+    for _ in range(Np):
         ind = Individual(inputs)
         ind.init_gene()
         ind.evaluation()
@@ -76,7 +75,7 @@ def mutInd(ind):
     ind.g2[random.randrange(len(ind.g2))] = random.randrange(2)
 
 
-def selInds(prevGen, newGen):
+def selInds(prevGen, newGen, N_p, ndSolSelection=False):
     cp = prevGen + newGen
     is_efficient = [True for _ in range(len(cp))]
     for i, ind1 in enumerate(cp):
@@ -95,13 +94,14 @@ def selInds(prevGen, newGen):
         if not efficient:
             is_efficient[i] = efficient
     selected_individuals = set([i for i, v in enumerate(is_efficient) if v])
-    print('\t', 'nd', [(cp[i], cp[i].obj1, cp[i].obj2) for i in selected_individuals if cp[i].obj1 > MIN_OBJ1 and cp[i].obj2 < MAX_OBJ2])
-    if len(selected_individuals) < NUM_POPULATION:
-        while len(selected_individuals) != NUM_POPULATION:
+    if ndSolSelection:
+        return [cp[i] for i in selected_individuals]
+    if len(selected_individuals) < N_p:
+        while len(selected_individuals) != N_p:
             i = random.choice(list(set(list(range(len(cp)))).difference(selected_individuals)))
             selected_individuals.add(i)
-    elif len(selected_individuals) > NUM_POPULATION:
-        selected_individuals = random.sample(selected_individuals, NUM_POPULATION)
+    elif len(selected_individuals) > N_p:
+        selected_individuals = random.sample(selected_individuals, N_p)
     #
     return [cp[i] for i in selected_individuals]
 
@@ -145,13 +145,10 @@ def neighborhoodSearch(ind0):
         return None
 
 
-def run(inputs):
-    population = genPopulation(inputs)
-    CXPB = 0.5
-    MUTPB = 0.5
-    NOFF = int(NUM_POPULATION * 0.8)
-    for gn in range(NGEN):
-        print('GN', gn)
+def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5):
+    population = genPopulation(inputs, N_p)
+    for gn in range(N_g):
+        print('GN', gn, population[:3])
         #
         population = localSearch(population)
         #
@@ -159,24 +156,22 @@ def run(inputs):
         for ind in population:
             obj1_values.append(ind.obj1)
             obj2_values.append(ind.obj2)
-        print('\t', [(ind, ind.obj1, ind.obj2) for ind in population if ind.obj1 > MIN_OBJ1 and ind.obj2 < MAX_OBJ2])
-
-        offspring = random.sample([ind.clone() for ind in population], NOFF)
+        offspring = random.sample([ind.clone() for ind in population], N_o)
         #
         for ind1, ind2 in zip(offspring[::2], offspring[1::2]):
-            if random.random() < CXPB:
+            if random.random() < p_c:
                 cxInd(ind1, ind2)
         #
         for ind in offspring:
-            if random.random() < MUTPB:
+            if random.random() < p_m:
                 mutInd(ind)
         #
         for ind in offspring:
             ind.evaluation()
-        population = selInds(population, offspring)
-    print('LAST')
+        population = selInds(population, offspring, N_p)
+    #
     paretoFront = {}
-    for ind in population:
+    for ind in selInds(population, [], N_p, ndSolSelection=True):
         k = (ind.obj1, ind.obj2)
         if k in paretoFront:
             ind0 = paretoFront[k]
@@ -184,7 +179,8 @@ def run(inputs):
                 paretoFront[k] = ind
         else:
             paretoFront[k] = ind
-    print(paretoFront)
+    #
+    return paretoFront
 
 
 def test():

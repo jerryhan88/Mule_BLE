@@ -544,10 +544,32 @@ def arrange_M3_muleTraj(floor):
                             writer.writerow([_date, hour, row['timeslot'], ori_mid, mid2, mid3, row['trajectories']])
 
 
+def get_M3muleLMs(floor, yyyymmdd):
+    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
+    fpath = opath.join(fTraj_dpath, 'fTraj-%s.csv' % yyyymmdd)
+    M3muleLMs = {}
+    with open(fpath) as r_csvfile:
+        reader = csv.DictReader(r_csvfile)
+        for row in reader:
+            lms = set()
+            for aTrajectory in eval(row['trajectories']):
+                if type(aTrajectory) == tuple:
+                    lms = lms.union(set(aTrajectory))
+                else:
+                    lms = lms.union([aTrajectory])
+            #
+            mid = row['mid_M3']
+            if mid not in M3muleLMs:
+                M3muleLMs[mid] = {}
+            hour, k = map(int, [row[cn] for cn in ['hour', 'timeslot']])
+            M3muleLMs[mid][hour, k] = lms
+    return M3muleLMs
+
 if __name__ == '__main__':
     floor = 'Lv4'
     # get_gridLayout(floor)
 
-    arrange_M3_muleTraj(floor)
+    # arrange_M3_muleTraj(floor)
+    print(get_M3muleLMs(floor, '20170301'))
 
 
