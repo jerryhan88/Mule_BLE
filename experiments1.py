@@ -17,7 +17,7 @@ else:
 from memeticAlgorithm import run as ma_run
 
 
-floor = 'Lv2'
+floor = 'Lv4'
 numGeneration = 300
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
