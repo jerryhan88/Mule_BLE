@@ -15,7 +15,7 @@ from problems import *
 
 
 floor = 'Lv4'
-numGeneration = 50
+numGeneration = 100
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
 probCrossover = 0.5
