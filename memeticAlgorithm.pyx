@@ -3,16 +3,13 @@ import random
 
 random.seed(64)
 
-MIN_OBJ1 = -100000
-MAX_OBJ2 = 100000
-
 
 class Individual(object):
     def __init__(self, inputs):
         self.inputs = inputs
         #
         self.g1, self.g2 = [], []
-        self.obj1, self.obj2 = MIN_OBJ1, MAX_OBJ2
+        self.obj1, self.obj2 = None, None
 
     def __repr__(self):
         return '|%s|%s|' % (''.join(['%d' % v for v in self.g1]), ''.join(['%d' % v for v in self.g2]))
@@ -37,15 +34,15 @@ class Individual(object):
                 if 1 - xProb < self.inputs['R']:
                     is_feasible = False
                     break
-        if is_feasible:
-            self.obj1 = min_rb
-            self.obj2 = sum(self.g2)
+        self.obj1 = min_rb
+        self.obj2 = sum(self.g2) if is_feasible else len(self.inputs['M'])
 
     def clone(self):
         c = Individual(self.inputs)
         c.g1 = self.g1[:]
         c.g2 = self.g2[:]
         return c
+
 
 def genPopulation(inputs, Np):
     population = []
@@ -145,7 +142,12 @@ def neighborhoodSearch(ind0):
         return None
 
 
-def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, experiment2=False):
+def run(inputs):
+    if 'N_g' not in inputs:
+        N_g, N_p, N_o, p_c, p_m = 200, 50, 40, 0.5, 0.5
+    else:
+        N_g, N_p, N_o, p_c, p_m = [inputs.get(k) for k in ['N_g', 'N_p', 'N_o', 'p_c', 'p_m']]
+    #
     population = genPopulation(inputs, N_p)
     evolution = []
     for gn in range(N_g):

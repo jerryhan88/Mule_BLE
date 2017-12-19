@@ -547,7 +547,7 @@ def arrange_M3_muleTraj(floor):
 def get_M3muleLMs(floor, yyyymmdd):
     fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
     fpath = opath.join(fTraj_dpath, 'fTraj-%s.csv' % yyyymmdd)
-    M3muleLMs = {}
+    M3muleLMs, mid_M2M3 = {}, {}
     with open(fpath) as r_csvfile:
         reader = csv.DictReader(r_csvfile)
         for row in reader:
@@ -558,12 +558,15 @@ def get_M3muleLMs(floor, yyyymmdd):
                 else:
                     lms = lms.union([aTrajectory])
             #
-            mid = row['mid_M3']
-            if mid not in M3muleLMs:
-                M3muleLMs[mid] = {}
+            mid2, mid3 = [int(row[cn]) for cn in ['mid_M2', 'mid_M3']]
+            if mid2 not in mid_M2M3:
+                mid_M2M3[mid2] = mid3
+            if mid3 not in M3muleLMs:
+                M3muleLMs[mid3] = {}
             hour, k = map(int, [row[cn] for cn in ['hour', 'timeslot']])
-            M3muleLMs[mid][hour, k] = lms
-    return M3muleLMs
+            M3muleLMs[mid3][hour, k] = lms
+    #
+    return M3muleLMs, mid_M2M3
 
 if __name__ == '__main__':
     floor = 'Lv4'

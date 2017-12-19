@@ -15,19 +15,7 @@ if opath.exists(c_fn):
 else:
     from setup import cythonize; cythonize(prefix)
 from memeticAlgorithm import run as ma_run
-
-
-floor = 'Lv4'
-numGeneration = 300
-numPopulation = 50
-numOffsprings = int(numPopulation * 0.8)
-probCrossover = 0.5
-probMutation = 0.5
-
-maProb_dpath = opath.join('z_data', 'maRes-%s-G(%d)-P(%d)-O(%d)-pC(%.2f)-pM(%.2f)' %
-                          (floor, numGeneration, numPopulation, numOffsprings, probCrossover, probMutation))
-if not opath.exists(maProb_dpath):
-    os.mkdir(maProb_dpath)
+from fixedLevel import run as fl_run
 
 
 def copy_base_inputs(base_inputs):
@@ -38,102 +26,22 @@ def copy_base_inputs(base_inputs):
     return inputs
 
 
-def run_fixedPL0(dow, hour, etc):
-    base_inputs = etc['base_inputs']
-    B, L = [base_inputs.get(k) for k in ['B', 'L']]
-    pl = [L[0] for _ in B]
-    return pl
+def get_timeHorizon():
+    dt = datetime.datetime(2017, 3, 1)
+    firstDOW = dt.weekday()
+    timeHorizon = []
+    while True:
+        dow = dt.weekday()
+        if dow in [MON, TUE, WED, THR, FRI]:
+            for hour in range(9, 18):
+                timeHorizon.append((dt, dow, hour))
+        dt += datetime.timedelta(days=1)
+        if dt.weekday() == firstDOW:
+            break
+    return timeHorizon
 
 
-def run_fixedPL1(dow, hour, etc):
-    base_inputs = etc['base_inputs']
-    B, L = [base_inputs.get(k) for k in ['B', 'L']]
-    pl = [L[1] for _ in B]
-    return pl
-
-
-def run_fixedPL2(dow, hour, etc):
-    base_inputs = etc['base_inputs']
-    B, L = [base_inputs.get(k) for k in ['B', 'L']]
-    pl = [L[2] for _ in B]
-    return pl
-
-
-def run_memeticAlgorithm(dow, hour, etc):
-    base_inputs, bid_index, c_b = [etc.get(k) for k in ['base_inputs', 'bid_index', 'c_b']]
-    #
-    mTraj = get_mTraj(floor, dow, hour)
-    mid_index = {}
-    for i, mid in enumerate(mTraj.keys()):
-        mid_index[mid] = i
-    M = list(range(len(mid_index)))
-    #
-    _p_kmbl = get_p_kmbl(floor, dow, hour)
-    p_kmbl = {}
-    for k, mid, bid, l in _p_kmbl:
-        p_kmbl[k, mid_index[mid], bid_index[bid], l] = _p_kmbl[k, mid, bid, l]
-    #
-    inputs = copy_base_inputs(base_inputs)
-    inputs['M'] = M
-    inputs['p_kmbl'] = p_kmbl
-    inputs['c_b'] = c_b
-    paretoFront, evolution = ma_run(inputs,
-                         numGeneration, numPopulation, numOffsprings, probCrossover, probMutation)
-    #
-    ind = random.choice(list(paretoFront.values()))
-    pl = ind.g1
-    #
-    prefix = '%sH%02d' % (etc['date'], hour)
-    fpath = opath.join(maProb_dpath, '%s.pkl' % prefix)
-    with open(fpath, 'wb') as fp:
-        pickle.dump([inputs, bid_index], fp)
-    evol_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
-    with open(evol_fpath, 'w') as w_csvfile:
-        writer = csv.writer(w_csvfile, lineterminator='\n')
-        new_header = ['generation', 'paretoFront']
-        writer.writerow(new_header)
-    for i, objs in enumerate(evolution):
-        objs = list(objs)
-        objs.sort()
-        new_row = [i + 1, objs]
-        with open(evol_fpath, 'a') as w_csvfile:
-            writer = csv.writer(w_csvfile, lineterminator='\n')
-            writer.writerow(new_row)
-    #
-    return pl
-
-
-def run(appName='MA'):
-    def get_timeHorizon():
-        dt = datetime.datetime(2017, 3, 1)
-        firstDOW = dt.weekday()
-        timeHorizon = []
-        while True:
-            dow = dt.weekday()
-            if dow in [MON, TUE, WED, THR, FRI]:
-                for hour in range(9, 18):
-                    timeHorizon.append((dt, dow, hour))
-            dt += datetime.timedelta(days=1)
-            if dt.weekday() == firstDOW:
-                break
-        return timeHorizon
-    appraches = {'MA': run_memeticAlgorithm,
-                 'FL0': run_fixedPL0,
-                 'FL1': run_fixedPL1,
-                 'FL2': run_fixedPL2}
-    #
-    if appName == 'MA':
-        fpath = opath.join('z_data', 'res-%s-%s-G(%d)-P(%d)-O(%d)-pC(%.2f)-pM(%.2f).csv' %
-                           (floor, appName, numGeneration, numPopulation, numOffsprings, probCrossover, probMutation))
-        pass
-    else:
-        fpath = opath.join('z_data', 'res-%s-%s.csv' % (floor, appName))
-    approach_run = appraches[appName]
-    with open(fpath, 'w') as w_csvfile:
-        writer = csv.writer(w_csvfile, lineterminator='\n')
-        new_header = ['date', 'dow', 'hour', 'obj1', 'obj2', 'numUnCoveredBK', 'unCoveredBK', 'numWholeMules']
-        writer.writerow(new_header)
-    #
+def get_base_inputs(floor):
     beacon2landmark = get_beacon2landmark(floor)
     bid_index, index_bid = {}, {}
     for i, beaconID in enumerate(beacon2landmark.keys()):
@@ -150,82 +58,195 @@ def run(appName='MA'):
     #
     base_inputs = {'B': B,
                    'L': L, 'e_l': e_l,
-                   'K': K, 'R': R}
+                   'K': K, 'R': R,
+                   'bid_index': bid_index, 'index_bid': index_bid}
+    return base_inputs
+
+
+def get_M_probCov(floor, dow, hour, bid_index):
+    mTraj = get_mTraj(floor, dow, hour)
+    mid2_index, index_mid2 = {}, {}
+    for i, mid in enumerate(mTraj.keys()):
+        mid = int(mid[len('m'):])
+        mid2_index[mid] = i
+        index_mid2[i] = mid
+    M = list(range(len(index_mid2)))
+
+    _p_kmbl = get_p_kmbl(floor, dow, hour)
+    p_kmbl = {}
+    for k, mid, bid, l in _p_kmbl:
+        p_kmbl[k, mid2_index[int(mid[len('m'):])], bid_index[bid], l] = _p_kmbl[k, mid, bid, l]
+    return M, mid2_index, index_mid2, p_kmbl
+
+
+def estimation(hour, M3muleLMs, mid_M2M3,
+                       base_inputs, plCovLD,
+                       index_bid, index_mid2,
+                       ls, ms):
+    unCoveredBK = set()
+    for b in base_inputs['B']:
+        for k in base_inputs['K']:
+            unCoveredBK.add((b, k))
+    selectedMules3 = [mid_M2M3[index_mid2[i]] for i in ms if index_mid2[i] in mid_M2M3]
+    coveringBK = set()
+    for mid3 in selectedMules3:
+        for b, k in unCoveredBK:
+            if (hour, k) not in M3muleLMs[mid3]:
+                continue
+            if set(plCovLD[index_bid[b], ls[b]]).intersection(M3muleLMs[mid3][hour, k]):
+                coveringBK.add((b, k))
+    unCoveredBK.difference_update(coveringBK)
     #
+    return unCoveredBK, selectedMules3
+
+
+def run_experiments_MA(repeatNum, floor, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5):
+    base_inputs = get_base_inputs(floor)
+    bid_index, index_bid = base_inputs['bid_index'], base_inputs['index_bid']
     plCovLD = get_plCovLD(floor)
+    numBK = len(base_inputs['B']) * len(base_inputs['K'])
+    #
+    prefix = '%s-G(%d)-P(%d)-O(%d)-pC(%.2f)-pM(%.2f)' % (floor, N_g, N_p, N_o, p_c, p_m)
+    ma_dpath = opath.join('z_data', 'MA-%s-R%d' % (prefix, repeatNum))
+    if not opath.exists(ma_dpath):
+        os.mkdir(ma_dpath)
+    res_fpath = opath.join(ma_dpath, 'res-%s.csv' % prefix)
+    with open(res_fpath, 'w') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        new_header = ['date', 'dow', 'hour', 'numBK', 'numMules2',
+                      'obj1', 'obj2', 'ratioUnCoveredBK',
+                      'actualNumMules3']
+        writer.writerow(new_header)
+    #
     timeHorizon = get_timeHorizon()
-    c_b = [MAX_BATTERY_POWER for _ in B]
+    c_b = [MAX_BATTERY_POWER for _ in base_inputs['B']]
     dt_muleTraj = {}
+    for dt, _, _, in timeHorizon:
+        yyyymmdd = '2017%02d%02d' % (dt.month, dt.day)
+        if dt not in dt_muleTraj:
+            dt_muleTraj[dt] = get_M3muleLMs(floor, yyyymmdd)
     while timeHorizon:
         dt, dow, hour = timeHorizon.pop(0)
         yyyymmdd = '2017%02d%02d' % (dt.month, dt.day)
-        etc = {'base_inputs': base_inputs,
-               'bid_index': bid_index,
-               'c_b': c_b,
-               'date': yyyymmdd}
-        pl = approach_run(dow, hour, etc)
         #
-        # Estimate the number of mules
+        M, mid2_index, index_mid2, p_kmbl = get_M_probCov(floor, dow, hour, bid_index)
         #
-        if dt not in dt_muleTraj:
-            dt_muleTraj[dt] = get_M3muleLMs(floor, yyyymmdd)
-        M3muleLMs = dt_muleTraj[dt]
-        unCoveredBK = set()
-        for b in B:
-            for k in K:
-                unCoveredBK.add((b, k))
-        selectedMules =set()
-        is_feasible = True
-        while True:
-            alpha_mule, muleCoveringBK, max_numCovering = None, None, -1e400
-            for mid in M3muleLMs:
-                if mid in selectedMules:
-                    continue
-                coveringBK = set()
-                for b, k in unCoveredBK:
-                    if (hour, k) not in M3muleLMs[mid]:
-                        continue
-                    if set(plCovLD[index_bid[b], pl[b]]).intersection(M3muleLMs[mid][hour, k]):
-                        coveringBK.add((b, k))
-                if max_numCovering < len(coveringBK):
-                    alpha_mule = mid
-                    muleCoveringBK = coveringBK
-                    max_numCovering = len(coveringBK)
-            if alpha_mule is None:
-                is_feasible = False
-                break
-            selectedMules.add(alpha_mule)
-            unCoveredBK.difference_update(muleCoveringBK)
-            if not unCoveredBK:
-                break
-        obj2 = len(selectedMules)
+        inputs = copy_base_inputs(base_inputs)
+        inputs['M'] = M
+        inputs['p_kmbl'] = p_kmbl
+        inputs['c_b'] = c_b
         #
-        # Estimate the remaining battery capacity
+        inputs['N_g'] = N_g
+        inputs['N_p'] = N_p
+        inputs['N_o'] = N_o
+        inputs['p_c'] = p_c
+        inputs['p_m'] = p_m
         #
-        new_c_b = []
-        for b in B:
-            new_c_b.append(c_b[b] - e_l[pl[b]])
-        obj1 = min(new_c_b)
+        # Pickle inputs
+        #
+        prefix = '%sH%02d' % (yyyymmdd, hour)
+        fpath = opath.join(ma_dpath, 'problemInputs-%s.pkl' % prefix)
+        with open(fpath, 'wb') as fp:
+            pickle.dump(inputs, fp)
+        #
+        paretoFront, evolution = ma_run(inputs)
+        #
+        # Record evolution
+        #
+        evol_fpath = opath.join(ma_dpath, 'evol-%s.csv' % prefix)
+        with open(evol_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['generation', 'paretoFront']
+            writer.writerow(new_header)
+        for i, objs in enumerate(evolution):
+            objs = list(objs)
+            objs.sort()
+            new_row = [i + 1, objs]
+            with open(evol_fpath, 'a') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                writer.writerow(new_row)
+        #
+        ind = random.choice(list(paretoFront.values()))
+        obj1, obj2 = ind.obj1, ind.obj2
+        ls = ind.g1[:]
+        ms = [i for i, y_m in enumerate(ind.g2) if y_m == 1]
+        #
+        # Estimate the ratio of uncovered BK pairs and logging
+        #
+        M3muleLMs, mid_M2M3 = dt_muleTraj[dt]
+        unCoveredBK, selectedMules3 = estimation(hour, M3muleLMs, mid_M2M3,
+                                                 base_inputs, plCovLD,
+                                                 index_bid, index_mid2,
+                                                 ls, ms)
         #
         # Logging
         #
-        wholeMules = set()
-        for mid in M3muleLMs:
-            for k in K:
-                if (hour, k) not in M3muleLMs[mid]:
-                    continue
-                wholeMules.add(mid)
-        new_row = [yyyymmdd, dow, hour, obj1]
-        if is_feasible:
-            new_row += [obj2, None, None, len(wholeMules)]
-        else:
-            new_row += [len(wholeMules), len(unCoveredBK), list(unCoveredBK), len(wholeMules)]
-        with open(fpath, 'a') as w_csvfile:
+        new_row = [yyyymmdd, dow, hour, numBK, len(inputs['M']),
+                   obj1, obj2, len(unCoveredBK) / numBK,
+                   len(selectedMules3)]
+        with open(res_fpath, 'a') as w_csvfile:
             writer = csv.writer(w_csvfile, lineterminator='\n')
             writer.writerow(new_row)
         #
-        c_b = new_c_b
+        c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] for b in inputs['B']]
+
+
+def run_experiments_FL(floor):
+    base_inputs = get_base_inputs(floor)
+    bid_index, index_bid = base_inputs['bid_index'], base_inputs['index_bid']
+    plCovLD = get_plCovLD(floor)
+    numBK = len(base_inputs['B']) * len(base_inputs['K'])
+    #
+    for l in base_inputs['L']:
+        res_fpath = opath.join('z_data', 'res-%s-FL%d.csv' % (floor, l))
+        with open(res_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['date', 'dow', 'hour', 'numBK', 'numMules2',
+                          'obj1', 'obj2', 'ratioUnCoveredBK',
+                          'actualNumMules3']
+            writer.writerow(new_header)
+        #
+        timeHorizon = get_timeHorizon()
+        c_b = [MAX_BATTERY_POWER for _ in base_inputs['B']]
+        dt_muleTraj = {}
+        for dt, _, _, in timeHorizon:
+            yyyymmdd = '2017%02d%02d' % (dt.month, dt.day)
+            if dt not in dt_muleTraj:
+                dt_muleTraj[dt] = get_M3muleLMs(floor, yyyymmdd)
+        while timeHorizon:
+            dt, dow, hour = timeHorizon.pop(0)
+            yyyymmdd = '2017%02d%02d' % (dt.month, dt.day)
+            #
+            M, mid2_index, index_mid2, p_kmbl = get_M_probCov(floor, dow, hour, bid_index)
+            #
+            inputs = copy_base_inputs(base_inputs)
+            inputs['M'] = M
+            inputs['p_kmbl'] = p_kmbl
+            inputs['c_b'] = c_b
+            inputs['FL'] = l
+            obj1, obj2, ls, ms = fl_run(inputs)
+            #
+            # Estimate the ratio of uncovered BK pairs and logging
+            #
+            M3muleLMs, mid_M2M3 = dt_muleTraj[dt]
+            unCoveredBK, selectedMules3 = estimation(hour, M3muleLMs, mid_M2M3,
+                                           base_inputs, plCovLD,
+                                           index_bid, index_mid2,
+                                           ls, ms)
+            #
+            # Logging
+            #
+            new_row = [yyyymmdd, dow, hour, numBK, len(inputs['M']),
+                       obj1, obj2, len(unCoveredBK) / numBK,
+                       len(selectedMules3)]
+            with open(res_fpath, 'a') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                writer.writerow(new_row)
+            #
+            c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] for b in inputs['B']]
 
 
 if __name__ == '__main__':
-    run('MA')
+    # run_experiments_FL('Lv4')
+    run_experiments_MA(0, 'Lv4', N_g=1)
+    # run('MA')

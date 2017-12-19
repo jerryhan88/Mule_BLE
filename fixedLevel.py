@@ -1,7 +1,8 @@
 from problems import *
 
 
-def run(inputs, l):
+def run(inputs):
+    l = inputs['FL']
     mo = order_mules(inputs)
     for i in range(len(mo)):
         ms = mo[:i + 1]
@@ -18,14 +19,10 @@ def run(inputs, l):
             break
     else:
         is_feasible = False
-    if is_feasible:
-        obj1 = min([inputs['c_b'][b] - inputs['e_l'][l] for b in inputs['B']])
-        obj2 = len(ms)
-        pass
-    else:
-        obj1, obj2 = MIN_OBJ1, MAX_OBJ2
-
-    return obj1, obj2, l
+    obj1 = min([inputs['c_b'][b] - inputs['e_l'][l] for b in inputs['B']])
+    obj2 = len(ms) if is_feasible else len(inputs['M'])
+    ls = [l for _ in inputs['B']]
+    return obj1, obj2, ls, ms
 
 
 def test():
