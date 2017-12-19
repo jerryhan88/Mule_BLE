@@ -149,7 +149,7 @@ def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, experiment2=False):
     population = genPopulation(inputs, N_p)
     evolution = []
     for gn in range(N_g):
-        print('GN', gn)
+        # print('GN', gn)
         #
         population = localSearch(population)
         #
