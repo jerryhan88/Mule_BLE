@@ -85,9 +85,13 @@ def run_memeticAlgorithm(dow, hour, etc):
     #
     prefix = '%sH%02d' % (etc['date'], hour)
     fpath = opath.join(maProb_dpath, '%s.pkl' % prefix)
-    evol_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
     with open(fpath, 'wb') as fp:
         pickle.dump([inputs, bid_index], fp)
+    evol_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
+    with open(evolution, 'w') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        new_header = ['generation', 'paretoFront']
+        writer.writerow(new_header)
     for i, objs in enumerate(evolution):
         objs = list(objs)
         objs.sort()
