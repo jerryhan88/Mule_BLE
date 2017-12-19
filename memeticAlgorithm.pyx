@@ -168,12 +168,12 @@ def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, experiment2=False):
         for ind in offspring:
             ind.evaluation()
         population = selInds(population, offspring, N_p)
-        if experiment2:
-            objs = set()
-            for ind in selInds(population, [], N_p, ndSolSelection=True):
-                k = (ind.obj1, ind.obj2)
-                objs.add(k)
-            evolution.append(objs)
+        #
+        objs = set()
+        for ind in selInds(population, [], N_p, ndSolSelection=True):
+            k = (ind.obj1, ind.obj2)
+            objs.add(k)
+        evolution.append(objs)
     #
     paretoFront = {}
     for ind in selInds(population, [], N_p, ndSolSelection=True):
