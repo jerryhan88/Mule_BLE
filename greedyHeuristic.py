@@ -26,9 +26,6 @@ def run(inputs, ms):
     return obj1, obj2, b_pl
 
 
-
-
-
 def test():
     inputs = p0()
     # inputs = p_Lv4_Mon_H9()

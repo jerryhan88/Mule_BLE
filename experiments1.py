@@ -7,11 +7,18 @@ import datetime
 from dataProcessing import *
 from problems import *
 #
+prefix = 'memeticAlgorithm'
+pyx_fn, c_fn = '%s.pyx' % prefix, '%s.c' % prefix
+if opath.exists(c_fn):
+    if opath.getctime(c_fn) < opath.getmtime(pyx_fn):
+        from setup import cythonize; cythonize(prefix)
+else:
+    from setup import cythonize; cythonize(prefix)
 from memeticAlgorithm import run as ma_run
 
 
 floor = 'Lv4'
-numGeneration = 1
+numGeneration = 200
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
 probCrossover = 0.5
@@ -78,7 +85,7 @@ def run_memeticAlgorithm(dow, hour, etc):
     #
     fpath = opath.join(maProb_dpath, '%sH%02d.pkl' % (etc['date'], hour))
     with open(fpath, 'wb') as fp:
-        pickle.dump(etc, fp)
+        pickle.dump([inputs, bid_index], fp)
     return pl
 
 
@@ -101,11 +108,16 @@ def run(appName='MA'):
                  'FL1': run_fixedPL1,
                  'FL2': run_fixedPL2}
     #
-    fpath = opath.join('z_data', 'res-%s.csv' % appName)
+    if appName == 'MA':
+        fpath = opath.join('z_data', 'res-%s-%s-G(%d)-P(%d)-O(%d)-pC(%.2f)-pM(%.2f).csv' %
+                           (floor, appName, numGeneration, numPopulation, numOffsprings, probCrossover, probMutation))
+        pass
+    else:
+        fpath = opath.join('z_data', 'res-%s-%s.csv' % (floor, appName))
     approach_run = appraches[appName]
     with open(fpath, 'w') as w_csvfile:
         writer = csv.writer(w_csvfile, lineterminator='\n')
-        new_header = ['date', 'dow', 'hour', 'obj1', 'obj2', 'numUnCoveredBK', 'unCoveredBK']
+        new_header = ['date', 'dow', 'hour', 'obj1', 'obj2', 'numUnCoveredBK', 'unCoveredBK', 'numWholeMules']
         writer.writerow(new_header)
     #
     beacon2landmark = get_beacon2landmark(floor)
@@ -165,11 +177,11 @@ def run(appName='MA'):
                     alpha_mule = mid
                     muleCoveringBK = coveringBK
                     max_numCovering = len(coveringBK)
-            selectedMules.add(alpha_mule)
-            unCoveredBK.difference_update(muleCoveringBK)
-            if alpha_mule is None and selectedMules:
+            if alpha_mule is None:
                 is_feasible = False
                 break
+            selectedMules.add(alpha_mule)
+            unCoveredBK.difference_update(muleCoveringBK)
             if not unCoveredBK:
                 break
         obj2 = len(selectedMules)
@@ -183,11 +195,17 @@ def run(appName='MA'):
         #
         # Logging
         #
-        new_row = [yyyymmdd, dow, hour, obj1, obj2]
+        wholeMules = set()
+        for mid in M3muleLMs:
+            for k in K:
+                if (hour, k) not in M3muleLMs[mid]:
+                    continue
+                wholeMules.add(mid)
+        new_row = [yyyymmdd, dow, hour, obj1]
         if is_feasible:
-            new_row += [None, None]
+            new_row += [obj2, None, None, len(wholeMules)]
         else:
-            new_row += [len(unCoveredBK), list(unCoveredBK)]
+            new_row += [len(wholeMules), len(unCoveredBK), list(unCoveredBK), len(wholeMules)]
         with open(fpath, 'a') as w_csvfile:
             writer = csv.writer(w_csvfile, lineterminator='\n')
             writer.writerow(new_row)
@@ -196,4 +214,4 @@ def run(appName='MA'):
 
 
 if __name__ == '__main__':
-    run()
+    run('MA')

@@ -145,7 +145,7 @@ def neighborhoodSearch(ind0):
         return None
 
 
-def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5):
+def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5, iterationLogging=False):
     population = genPopulation(inputs, N_p)
     for gn in range(N_g):
         print('GN', gn, population[:3])
@@ -169,6 +169,8 @@ def run(inputs, N_g=200, N_p=50, N_o=40, p_c=0.5, p_m=0.5):
         for ind in offspring:
             ind.evaluation()
         population = selInds(population, offspring, N_p)
+        if iterationLogging:
+            pass
     #
     paretoFront = {}
     for ind in selInds(population, [], N_p, ndSolSelection=True):
