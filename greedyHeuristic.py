@@ -19,11 +19,11 @@ def run(inputs, ms):
         else:
             b_pl.append(None)
     if None in b_pl:
-        obj1, obj2 = MIN_OBJ1, MAX_OBJ2
+        obj1 = MIN_OBJ1
     else:
         obj1 = min([inputs['c_b'][b] - inputs['e_l'][b_pl[b]] for b in inputs['B']])
-        obj2 = len(ms)
-    return obj1, obj2, b_pl
+    obj2 = len(ms)
+    return obj1, obj2
 
 
 def test():
