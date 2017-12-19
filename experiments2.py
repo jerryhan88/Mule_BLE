@@ -15,7 +15,7 @@ from problems import *
 
 
 floor = 'Lv4'
-numGeneration = 100
+numGeneration = 50
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
 probCrossover = 0.5
@@ -41,7 +41,6 @@ def run():
             new_header = ['obj1', 'obj2']
             writer.writerow(new_header)
         mo = order_mules(inputs)
-        gh_objs = []
         for i in range(len(mo)):
             new_row = list(gh_run(inputs, mo[:i + 1]))
             with open(gh_fpath, 'a') as w_csvfile:
@@ -49,7 +48,7 @@ def run():
                 writer.writerow(new_row)
         #
         ma_fpath = opath.join(maProb_dpath, '%s-MA.csv' % prefix)
-        with open(gh_fpath, 'w') as w_csvfile:
+        with open(ma_fpath, 'w') as w_csvfile:
             writer = csv.writer(w_csvfile, lineterminator='\n')
             new_header = ['generation', 'paretoFront']
             writer.writerow(new_header)
