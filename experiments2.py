@@ -58,7 +58,7 @@ def run():
             objs = list(objs)
             objs.sort()
             new_row = [i + 1, objs]
-            with open(gh_fpath, 'a') as w_csvfile:
+            with open(ma_fpath, 'a') as w_csvfile:
                 writer = csv.writer(w_csvfile, lineterminator='\n')
                 writer.writerow(new_row)
 
