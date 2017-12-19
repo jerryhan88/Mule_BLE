@@ -18,7 +18,7 @@ from memeticAlgorithm import run as ma_run
 
 
 floor = 'Lv2'
-numGeneration = 100
+numGeneration = 50
 numPopulation = 50
 numOffsprings = int(numPopulation * 0.8)
 probCrossover = 0.5
