@@ -29,7 +29,7 @@ def run():
     for fn in os.listdir(maProb_dpath):
         if not fnmatch.fnmatch(fn, '*.pkl'):
             continue
-        print(fn)
+        # print(fn)
         prefix = fn[:-len('.pkl')]
         ifpath = opath.join(maProb_dpath, fn)
         with open(ifpath, 'rb') as fp:
