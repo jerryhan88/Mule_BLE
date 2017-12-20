@@ -13,7 +13,6 @@ def run():
         if prefix not in prefix_dpaths:
             prefix_dpaths[prefix] = []
         prefix_dpaths[prefix].append(opath.join('z_data', dn))
-    print(prefix_dpaths)
     for prefix in prefix_dpaths:
         numBK = None
         dateHour, dows, nm2s = [], {}, {}
