@@ -1,9 +1,5 @@
 import random
 
-
-random.seed(64)
-
-
 class Individual(object):
     def __init__(self, inputs):
         self.inputs = inputs
