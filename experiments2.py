@@ -14,7 +14,7 @@ from greedyHeuristic import run as gh_run
 from problems import *
 
 
-prefix = '_MA-Lv4-G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)-R0'
+prefix = '_MA-Lv4-G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)-R10'
 
 maProb_dpath = opath.join('z_data', '%s' % prefix)
 fn = 'problemInputs-20170306H11.pkl'

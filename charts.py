@@ -2,6 +2,8 @@ import os.path as opath
 import os, fnmatch
 import csv
 import numpy as np
+import pandas as pd
+import datetime
 import matplotlib.pyplot as plt
 
 _rgb = lambda r, g, b: (r / float(255), g / float(255), b / float(255))
@@ -48,10 +50,15 @@ mlists = (
     )
 
 FIGSIZE = (8, 6)
+FIGSIZE2 =(8, 4)
+
 _fontsize = 14
 yLabels = {'obj1': 'Obj1',
            'obj2': 'Obj2',
            'ratioUnCoveredBK': ''}
+
+
+id_dow = {i: dow for i, dow in enumerate(['Mon.', 'Tue.', 'Wed.', 'Thr.', 'Fri.'])}
 
 def numMules():
     floor = 'Lv2'
@@ -62,9 +69,11 @@ def numMules():
         reader = csv.DictReader(r_csvfile)
         for row in reader:
             yyyymmdd = row['date']
-            mm = yyyymmdd[len('yyyymm'):]
+            year = int(yyyymmdd[:-len('mmdd')])
+            month = int(yyyymmdd[len('yyyy'):-len('dd')])
+            day = int(yyyymmdd[len('yyyymm'):])
             hour = int(row['hour'])
-            times.append('Mar.%s H%02d' % (mm, hour))
+            times.append('%s H%02d' % (id_dow[datetime.datetime(year, month, day).weekday()], hour))
             aMeasure.append(int(row['numMules2']))
     measures.append(aMeasure)
     xticks_index, xticks_label = [], []
@@ -100,7 +109,7 @@ def numMules():
 
 def objectivs_sim():
     floor = 'Lv2'
-    ma_prefix = 'Lv2-G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)'
+    ma_prefix = '%s-G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)' % floor
     #
     # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
     # mea, _ylim, legendLoc = 'obj2', (-2, 65), 'upper right'
@@ -155,7 +164,7 @@ def objectivs_sim():
         for y in auxiliaryLines:
             plt.plot(range(len(times)), y, color=clists[i], linestyle=':')
 
-    plt.legend(['FL%d' % l for l in range(3)] + ['MA'], ncol=1, loc=legendLoc, fontsize=_fontsize)
+    plt.legend(['FL%d' % (l + 1) for l in range(3)] + ['MA'], ncol=1, loc=legendLoc, fontsize=_fontsize)
     plt.xticks(xticks_index, xticks_label, rotation=20)
     ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
@@ -184,14 +193,16 @@ def evolution():
         if x % 5 == 0:
             xticks_index.append(x - 1)
             xticks_lable.append(x)
-
-
     fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
+    ax.set_xlabel('Number of selected mules', fontsize=_fontsize)
+    ax.set_ylabel('Minimum battery power', fontsize=_fontsize)
 
+    labels = []
     plt.plot(range(len(xs)), ys, color='black', linestyle=':')
+    labels += ['App.']
 
-    plots, labels = [], []
+
 
     Gs = [1, 13, 30, 45]
     yss = [[803.4223836008993, 806.5723802265991, 812.9617420807992, 818.2713155254993],
@@ -207,26 +218,55 @@ def evolution():
 
     for i in range(len(xss)):
         ys, xs = yss[i], xss[i]
-        p = plt.scatter(xs, ys, marker=mlists[i], s=70)
-        plots += [p]
-        labels += ['G%d' % Gs[i]]
-    plt.legend(plots, labels, loc='lower right', ncol=1, fontsize=_fontsize, scatterpoints=1)
+        # p = plt.scatter(xs, ys, marker=mlists[i], s=70, c=clists[i])
 
+        plt.plot(xs, ys, color=clists[i], marker=mlists[i])
 
-
+        # labels += ['G%d' ]
+        labels += ['G%02d' % Gs[i]]
+    plt.legend(labels, ncol=1, loc='lower right', fontsize=_fontsize)
     plt.xticks(xticks_index, xticks_lable)
+    ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
     plt.xlim((-1, 36))
-
 
     img_ofpath = 'evolution.pdf'
     plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
 
 
 
+def boxPlots():
+    dpath = opath.join('z_data', 'experiment2')
+    fns = ['summary-G50-S1.csv', 'summary-G50-S0.csv',
+           'summary-G100-S1.csv', 'summary-G100-S0.csv']
+
+
+    for m in ['obj1', 'obj2', 'comTime']:
+        data = []
+        for fn in fns:
+            df = pd.read_csv(opath.join(dpath, fn))
+            data.append(df[m])
+            # obj2s.append(df[])
+            # comTimes.append(df[])
+
+        fig = plt.figure(figsize=FIGSIZE2)
+        ax = fig.add_subplot(111)
+        # ax.set_xlabel('Parameter setting', fontsize=_fontsize)
+        ax.tick_params(axis='both', which='major', labelsize=_fontsize)
+        medianprops = dict(linestyle='-', linewidth=2.0)
+        boxprops = dict(linestyle='--', linewidth=1.0)
+        plt.boxplot(data, boxprops=boxprops, medianprops=medianprops)
+
+        img_ofpath = 'boxplot_%s.pdf' % m
+        plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
+
+
+
+
 
 
 if __name__ == '__main__':
-    numMules()
+    # numMules()
     # objectivs_sim()
-    # evolution()
+    evolution()
+    # boxPlots()

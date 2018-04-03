@@ -99,19 +99,20 @@ def selInds(prevGen, newGen, N_p, ndSolSelection=False):
     return [cp[i] for i in selected_individuals]
 
 
-def localSearch(prevPopulation):
+def localSearch(prevPopulation, N_s):
     newPopulation = []
     for ind0 in prevPopulation:
-        ind1 = neighborhoodSearch(ind0)
+        ind1 = neighborhoodSearch(ind0, N_s)
         while ind1 is not None:
             ind0 = ind1
-            ind1 = neighborhoodSearch(ind0)
+            ind1 = neighborhoodSearch(ind0, N_s)
         newPopulation.append(ind0)
     return newPopulation
 
 
-def neighborhoodSearch(ind0):
+def neighborhoodSearch(ind0, N_s):
     chromosomeLen = len(ind0.g1) + len(ind0.g2)
+    allNeighbors = []
     for i in range(chromosomeLen):
         if i < len(ind0.g1):
             cur_l = ind0.g1[i]
@@ -120,9 +121,7 @@ def neighborhoodSearch(ind0):
                     continue
                 ind1 = ind0.clone()
                 ind1.g1[i] = l
-                ind1.evaluation()
-                if ind0.obj1 < ind1.obj1 and ind0.obj2 > ind1.obj2:
-                    return ind1
+                allNeighbors.append(ind1)
         else:
             j = i - len(ind0.g1)
             cur_m = ind0.g2[j]
@@ -131,23 +130,27 @@ def neighborhoodSearch(ind0):
                     continue
                 ind1 = ind0.clone()
                 ind1.g2[j] = m
-                ind1.evaluation()
-                if ind0.obj1 < ind1.obj1 and ind0.obj2 > ind1.obj2:
-                    return ind1
+                allNeighbors.append(ind1)
+    #
+    neighbors = random.sample(allNeighbors, N_s) if N_s else allNeighbors
+    for ind1 in neighbors:
+        ind1.evaluation()
+        if ind0.obj1 < ind1.obj1 and ind0.obj2 > ind1.obj2:
+            return ind1
     else:
         return None
 
 
 def run(inputs):
     if 'N_g' not in inputs:
-        N_g, N_p, N_o, p_c, p_m = 200, 50, 40, 0.5, 0.5
+        N_g, N_p, N_o, p_c, p_m, N_s = 200, 50, 40, 0.5, 0.5, 10
     else:
-        N_g, N_p, N_o, p_c, p_m = [inputs.get(k) for k in ['N_g', 'N_p', 'N_o', 'p_c', 'p_m']]
+        N_g, N_p, N_o, p_c, p_m, N_s = [inputs.get(k) for k in ['N_g', 'N_p', 'N_o', 'p_c', 'p_m', 'N_s']]
     #
     population = genPopulation(inputs, N_p)
     evolution = []
     for gn in range(N_g):
-        population = localSearch(population)
+        population = localSearch(population, N_s)
         #
         obj1_values, obj2_values = [], []
         for ind in population:

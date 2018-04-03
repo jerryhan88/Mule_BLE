@@ -8,13 +8,13 @@ import numpy as np
 from dataProcessing import *
 from problems import *
 #
-prefix = 'memeticAlgorithm'
-pyx_fn, c_fn = '%s.pyx' % prefix, '%s.c' % prefix
-if opath.exists(c_fn):
-    if opath.getctime(c_fn) < opath.getmtime(pyx_fn):
-        from setup import cythonize; cythonize(prefix)
-else:
-    from setup import cythonize; cythonize(prefix)
+# prefix = 'memeticAlgorithm'
+# pyx_fn, c_fn = '%s.pyx' % prefix, '%s.c' % prefix
+# if opath.exists(c_fn):
+#     if opath.getctime(c_fn) < opath.getmtime(pyx_fn):
+#         from setup import cythonize; cythonize(prefix)
+# else:
+#     from setup import cythonize; cythonize(prefix)
 from memeticAlgorithm import run as ma_run
 from fixedLevel import run as fl_run
 
@@ -101,7 +101,7 @@ def estimation(hour, M3muleLMs, mid_M2M3,
     return unCoveredBK, selectedMules3
 
 
-def run_experiments_MA(repeatNum, floor, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5):
+def run_experiments_MA(repeatNum, floor, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5, N_s=10):
     base_inputs = get_base_inputs(floor)
     bid_index, index_bid = base_inputs['bid_index'], base_inputs['index_bid']
     plCovLD = get_plCovLD(floor)
@@ -142,6 +142,7 @@ def run_experiments_MA(repeatNum, floor, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0
         inputs['N_o'] = N_o
         inputs['p_c'] = p_c
         inputs['p_m'] = p_m
+        inputs['N_s'] = N_s
         #
         # Pickle inputs
         #
@@ -252,7 +253,9 @@ def summary_MA():
     for dn in os.listdir('z_data'):
         if not dn.startswith('_'):
             continue
-        prefix = dn[len('_MA-'):-len('-R0')]
+        _, _, _, _, _, _, _, _repeatNum = dn.split('-')
+
+        prefix = dn[len('_MA-'):-len('-%s' % _repeatNum)]
         if prefix not in prefix_dpaths:
             prefix_dpaths[prefix] = []
         prefix_dpaths[prefix].append(opath.join('z_data', dn))
@@ -308,5 +311,8 @@ def summary_MA():
 
 if __name__ == '__main__':
     # run_experiments_FL('Lv4')
-    # run_experiments_MA(0, 'Lv4', N_g=1)
+    # import time
+    # oldTime = time.time()
+    # run_experiments_MA(1001, 'Lv4', N_g=50)
+    # print(time.time() - oldTime)
     summary_MA()
