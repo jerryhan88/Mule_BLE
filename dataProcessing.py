@@ -324,7 +324,7 @@ def individual_duration(month):
             with open(opath.join(dpath, fn)) as r_csvfile:
                 reader = csv.DictReader(r_csvfile)
                 for row in reader:
-                    t1 = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+                    t1 = datetime.datetime.fromtimestamp(time.mktime(time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")))
                     madd, loc1 = [row[cn] for cn in ['id', 'location']]
                     if madd not in mule_lastTimeLoc:
                         mule_lastTimeLoc[madd] = [t1, loc1]
