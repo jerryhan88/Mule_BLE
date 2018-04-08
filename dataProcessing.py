@@ -339,8 +339,8 @@ def individual_duration(month):
                         if not opath.exists(fpath):
                             with open(fpath, 'w') as w_csvfile:
                                 writer = csv.writer(w_csvfile, lineterminator='\n')
-                                new_headers = ['mid', 'fTime', 'tTime', 'duration', 'location']
-                                writer.writerow(new_headers)
+                                new_header = ['mid', 'fTime', 'tTime', 'duration', 'location']
+                                writer.writerow(new_header)
                         with open(fpath, 'a') as w_csvfile:
                             writer = csv.writer(w_csvfile, lineterminator='\n')
                             writer.writerow([madd_mid[madd], t0, t1, (t1 - t0).seconds, loc0])
@@ -358,8 +358,42 @@ def individual_duration(month):
 
 def aggregate_indiDur(month):
     month_dpath = get_base_dpath(month)
+    indiDur_fpath = opath.join(month_dpath, 'M%d-aggIndiDur.csv' % month)
+    #
+    muleDayLv_duration = {}
     lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if
                  opath.isdir(opath.join(month_dpath, dname))]
+    mids, days, lvs = set(), set(), set()
+    for lv_dpath in lvs_dpath:
+        indi_dpath = opath.join(lv_dpath, 'indiDur')
+        for fn in os.listdir(indi_dpath):
+            if not fn.endswith('.csv'):
+                continue
+            lv = fn.split('-')[1]
+            with open(opath.join(indi_dpath, fn)) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    t = time.strptime(row['fTime'], "%Y-%m-%d %H:%M:%S")
+                    mid = row['mid']
+                    k = (mid, t.tm_mday, lv)
+                    if k not in muleDayLv_duration:
+                        muleDayLv_duration[k] = 0
+                        mids.add(mid)
+                        days.add(t.tm_mday)
+                        lvs.add(lv)
+                    muleDayLv_duration[k] += eval(row['duration'])
+    with open(indiDur_fpath, 'w') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        new_header = ['month', 'day', 'lv', 'mid', 'duration']
+        writer.writerow(new_header)
+        for day in days:
+            for lv in lvs:
+                for mid in mids:
+                    k = (mid, day, lv)
+                    duration = muleDayLv_duration[k] if k in muleDayLv_duration else 0
+                    writer.writerow([month, day, lv, mid, duration])
+
+
 
 
 
