@@ -10,7 +10,6 @@ from math import sqrt
 
 HOUR_9AM_6PM = [h for h in range(9, 18)]
 MON, TUE, WED, THR, FRI, SAT, SUN = range(7)
-WEEK_DAYS = [MON, TUE, WED, THR, FRI]
 N_TIMESLOT = 4
 Intv = 60 / N_TIMESLOT
 PL_RANGE = [3, 7, 10]
@@ -263,45 +262,36 @@ def get_base_dpath(month):
     return base_dpath
 
 
-def month2LvDay(month):
-    month_dpath = get_base_dpath(month)
-    if not opath.exists(month_dpath):
-        os.mkdir(month_dpath)
-    muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
-    madd_mid, mid_madd = {}, {}
-    #
+def preprocess_rawTraj(month, floor, dow=TUE):
+    base_dpath = get_base_dpath(month)
     rawTraj_fpath = rawTraj2_fpath if month == 2 else rawTraj3_fpath
+    traj_fw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
+    floor_format = '0' + floor[len('Lv'):] + '0'
+    if not opath.exists(traj_fw_dpath):
+        os.mkdir(traj_fw_dpath)
     with gzip.open(rawTraj_fpath, 'rt') as r_csvfile:
         reader = csv.DictReader(r_csvfile)
         for row in reader:
             t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
-            if not t.tm_wday in WEEK_DAYS:
+            if t.tm_wday is not dow:
                 continue
             if not t.tm_hour in HOUR_9AM_6PM:
                 continue
             locationID = row['location']
             lv = locationID[3:6]
+            if floor_format != lv:
+                continue
             lv = 'Lv%s' % lv[1:-1]
-            lv_dpath = opath.join(month_dpath, 'M%d-%s' % (month, lv))
-            if not opath.exists(lv_dpath):
-                os.mkdir(lv_dpath)
-            fpath = opath.join(lv_dpath, 'M%d-%s-%d%02d%02d' % (month, lv, t.tm_year, t.tm_mon, t.tm_mday))
+            fpath = opath.join(traj_fw_dpath,
+                               'traj-%s-W%d-H%02d-%d%02d%02d.csv' % (lv, dow, t.tm_hour, t.tm_year, t.tm_mon, t.tm_mday))
             if not opath.exists(fpath):
                 with open(fpath, 'w') as w_csvfile:
                     writer = csv.writer(w_csvfile, lineterminator='\n')
                     new_headers = ['time', 'id', 'location']
                     writer.writerow(new_headers)
-            madd = row['id']
-            if madd not in madd_mid:
-                mid = len(madd_mid)
-                madd_mid[madd] = mid
-                mid_madd[mid] = madd
-
             with open(fpath, 'a') as w_csvfile:
                 writer = csv.writer(w_csvfile, lineterminator='\n')
                 writer.writerow([row['time'], row['id'], row['location']])
-    with open(muleID_fpath, 'wb') as fp:
-        pickle.dump([madd_mid, mid_madd], fp)
 
 
 def gen_indiTrajectory(month, floor, dow=WED):
