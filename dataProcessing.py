@@ -314,8 +314,9 @@ def individual_duration(month):
 
     def handle_lv_individual_duration(dpath):
         indi_dpath = opath.join(dpath, 'indiDur')
-        if not opath.exists(indi_dpath):
-            os.mkdir(indi_dpath)
+        if opath.exists(indi_dpath):
+            os.remove(indi_dpath)
+        os.mkdir(indi_dpath)
         for fn in os.listdir(dpath):
             lv = fn.split('-')[1]
             if not fn.endswith('.csv'):
