@@ -1,12 +1,14 @@
 import os.path as opath
 import os, fnmatch
-import csv, gzip
+import multiprocessing
 import datetime, time
 import networkx as nx
-import pickle
 import pandas as pd
-from xlrd import open_workbook
 from math import sqrt
+from xlrd import open_workbook
+import csv, gzip
+import pickle
+
 
 HOUR_9AM_6PM = [h for h in range(9, 18)]
 MON, TUE, WED, THR, FRI, SAT, SUN = range(7)
@@ -302,6 +304,71 @@ def month2LvDay(month):
                 writer.writerow([row['time'], row['id'], row['location']])
     with open(muleID_fpath, 'wb') as fp:
         pickle.dump([madd_mid, mid_madd], fp)
+
+
+def individual_duration(month):
+    month_dpath = get_base_dpath(month)
+    muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+    with open(muleID_fpath, 'rb') as fp:
+        madd_mid, mid_madd = pickle.load(fp)
+
+    def handle_lv_individual_duration(dpath):
+        indi_dpath = opath.join(dpath, 'indiDur')
+        if not opath.exists(indi_dpath):
+            os.mkdir(indi_dpath)
+        for fn in os.listdir(dpath):
+            lv = fn.split('-')[1]
+            if not fn.endswith('.csv'):
+                continue
+            mule_lastTimeLoc = {}
+            with open(opath.join(dpath, fn)) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    t1 = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+                    madd, loc1 = [row[cn] for cn in ['id', 'location']]
+                    if madd not in mule_lastTimeLoc:
+                        mule_lastTimeLoc[madd] = [t1, loc1]
+                        continue
+                    t0, loc0 = mule_lastTimeLoc[madd]
+                    if loc1 == loc0:
+                        continue
+                    else:
+                        fpath = opath.join(indi_dpath, 'M%d-%s-m%d.csv' % (month, lv, madd_mid[madd]))
+                        if not opath.exists(fpath):
+                            with open(fpath, 'w') as w_csvfile:
+                                writer = csv.writer(w_csvfile, lineterminator='\n')
+                                new_headers = ['mid', 'fTime', 'tTime', 'duration', 'location']
+                                writer.writerow(new_headers)
+                        with open(fpath, 'a') as w_csvfile:
+                            writer = csv.writer(w_csvfile, lineterminator='\n')
+                            writer.writerow([madd_mid[madd], t0, t1, (t1 - t0).seconds, loc0])
+                        mule_lastTimeLoc[madd] = [t1, loc1]
+    #
+    lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))]
+    ps = []
+    for dpath in lvs_dpath:
+        p = multiprocessing.Process(target=handle_lv_individual_duration, args=(dpath))
+        ps.append(p)
+        p.start()
+    for p in ps:
+        p.join()
+
+
+def aggregate_indiDur(month):
+    month_dpath = get_base_dpath(month)
+    lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if
+                 opath.isdir(opath.join(month_dpath, dname))]
+
+
+
+
+
+
+
+
+
+
+
 
 
 def gen_indiTrajectory(month, floor, dow=WED):
