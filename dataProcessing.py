@@ -335,10 +335,13 @@ def individual_duration(month):
             print('read all records', fn)
             for madd, traj in mule_traj.items():
                 fpath = opath.join(indi_dpath, 'M%d-%s-m%d.csv' % (month, lv, madd_mid[madd]))
-                with open(fpath, 'w') as w_csvfile:
+                if not opath.exists(fpath):
+                    with open(fpath, 'w') as w_csvfile:
+                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                        new_header = ['mid', 'fTime', 'tTime', 'duration', 'location']
+                        writer.writerow(new_header)
+                with open(fpath, 'a') as w_csvfile:
                     writer = csv.writer(w_csvfile, lineterminator='\n')
-                    new_header = ['mid', 'fTime', 'tTime', 'duration', 'location']
-                    writer.writerow(new_header)
                     t0, loc0 = None, None
                     for t1, loc1 in sorted(traj):
                         if t0 is None:
