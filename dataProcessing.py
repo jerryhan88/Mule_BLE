@@ -314,6 +314,7 @@ def individual_duration(month):
 
     def handle_lv_individual_duration(dpath):
         indi_dpath = opath.join(dpath, 'indiDur')
+        print(indi_dpath)
         if opath.exists(indi_dpath):
             shutil.rmtree(indi_dpath)
         os.mkdir(indi_dpath)
