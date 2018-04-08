@@ -26,6 +26,17 @@ rawTraj2_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
 rawTraj3_fpath = opath.join('z_data', 'location_archival_2017_3_1.csv.gz')
 
 
+def get_base_dpath(month):
+    if month == 2:
+        base_dpath = opath.join('z_data', 'M2')
+    else:
+        assert month == 3
+        base_dpath = opath.join('z_data', 'M3')
+    if not opath.exists(base_dpath):
+        os.mkdir(base_dpath)
+    return base_dpath
+
+
 def get_beacon2landmark(floor):
     beaconInfo_fpath = opath.join('z_data', 'beaconInfo-%s.pkl' % floor)
     if not opath.exists(beaconInfo_fpath):
@@ -254,16 +265,6 @@ def get_plCovTraj(floor):
     return plCovTraj
 
 
-def get_base_dpath(month):
-    if month == 2:
-        base_dpath = opath.join('z_data', 'M2')
-    else:
-        assert month == 3
-        base_dpath = opath.join('z_data', 'M3')
-    if not opath.exists(base_dpath):
-        os.mkdir(base_dpath)
-    return base_dpath
-
 
 def month2LvDay(month):
     month_dpath = get_base_dpath(month)
@@ -322,29 +323,32 @@ def individual_duration(month):
             lv = fn.split('-')[1]
             if not fn.endswith('.csv'):
                 continue
-            mule_lastTimeLoc = {}
+            mule_traj = {}
             with open(opath.join(dpath, fn)) as r_csvfile:
                 reader = csv.DictReader(r_csvfile)
                 for row in reader:
                     t1 = datetime.datetime.fromtimestamp(time.mktime(time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")))
                     madd, loc1 = [row[cn] for cn in ['id', 'location']]
-                    if madd not in mule_lastTimeLoc:
-                        mule_lastTimeLoc[madd] = [t1, loc1]
-                        continue
-                    t0, loc0 = mule_lastTimeLoc[madd]
-                    if loc1 == loc0:
-                        continue
-                    else:
-                        fpath = opath.join(indi_dpath, 'M%d-%s-m%d.csv' % (month, lv, madd_mid[madd]))
-                        if not opath.exists(fpath):
-                            with open(fpath, 'w') as w_csvfile:
-                                writer = csv.writer(w_csvfile, lineterminator='\n')
-                                new_header = ['mid', 'fTime', 'tTime', 'duration', 'location']
-                                writer.writerow(new_header)
-                        with open(fpath, 'a') as w_csvfile:
-                            writer = csv.writer(w_csvfile, lineterminator='\n')
+                    if madd not in mule_traj:
+                        mule_traj[madd] = []
+                    mule_traj[madd].append((t1, loc1))
+            print('read all records', fn)
+            for madd, traj in mule_traj.items():
+                fpath = opath.join(indi_dpath, 'M%d-%s-m%d.csv' % (month, lv, madd_mid[madd]))
+                with open(fpath, 'w') as w_csvfile:
+                    writer = csv.writer(w_csvfile, lineterminator='\n')
+                    new_header = ['mid', 'fTime', 'tTime', 'duration', 'location']
+                    writer.writerow(new_header)
+                    t0, loc0 = None, None
+                    for t1, loc1 in sorted(traj):
+                        if t0 is None:
+                            t0, loc0 = t1, loc1
+                            continue
+                        if loc1 == loc0:
+                            continue
+                        else:
                             writer.writerow([madd_mid[madd], t0, t1, (t1 - t0).seconds, loc0])
-                        mule_lastTimeLoc[madd] = [t1, loc1]
+                            t0, loc0 = t1, loc1
     #
     lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))]
     ps = []
@@ -397,8 +401,25 @@ def aggregate_indiDur(month):
 
 
 
-
-
+def temp():
+    madd23 = []
+    for m in [2, 3]:
+        month_dpath = get_base_dpath(m)
+        muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % m)
+        with open(muleID_fpath, 'rb') as fp:
+            madd_mid, mid_madd = pickle.load(fp)
+            madd23.append(set(madd_mid.keys()))
+    madd2, madd3 = madd23
+    print(len(madd2.intersection(madd3)))
+    
+    df = pd.read_csv(opath.join(get_base_dpath(2), 'M2-aggIndiDur.csv'))
+    
+    len(df)
+    df.head()
+    df['duration'].hist()
+    df['duration'].argmax()
+    df.iloc[[168272]]
+    
 
 
 
