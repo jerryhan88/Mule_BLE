@@ -390,8 +390,8 @@ def aggregate_indiDur(month):
             for lv in lvs:
                 for mid in mids:
                     k = (mid, day, lv)
-                    duration = muleDayLv_duration[k] if k in muleDayLv_duration else 0
-                    writer.writerow([month, day, lv, mid, duration])
+                    if k in muleDayLv_duration:
+                        writer.writerow([month, day, lv, mid, muleDayLv_duration[k]])
 
 
 
