@@ -347,7 +347,7 @@ def individual_duration(month):
     lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))]
     ps = []
     for dpath in lvs_dpath:
-        p = multiprocessing.Process(target=handle_lv_individual_duration, args=(dpath))
+        p = multiprocessing.Process(target=handle_lv_individual_duration, args=(dpath, ))
         ps.append(p)
         p.start()
     for p in ps:
