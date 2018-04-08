@@ -285,7 +285,7 @@ def month2LvDay(month):
             lv_dpath = opath.join(month_dpath, 'M%d-%s' % (month, lv))
             if not opath.exists(lv_dpath):
                 os.mkdir(lv_dpath)
-            fpath = opath.join(lv_dpath, 'M%d-%s-%d%02d%02d' % (month, lv, t.tm_year, t.tm_mon, t.tm_mday))
+            fpath = opath.join(lv_dpath, 'M%d-%s-%d%02d%02d.csv' % (month, lv, t.tm_year, t.tm_mon, t.tm_mday))
             if not opath.exists(fpath):
                 with open(fpath, 'w') as w_csvfile:
                     writer = csv.writer(w_csvfile, lineterminator='\n')
