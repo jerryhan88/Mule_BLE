@@ -315,7 +315,7 @@ def individual_duration(month):
     def handle_lv_individual_duration(dpath):
         indi_dpath = opath.join(dpath, 'indiDur')
         if opath.exists(indi_dpath):
-            os.remove(indi_dpath)
+            os.rmdir(indi_dpath)
         os.mkdir(indi_dpath)
         for fn in os.listdir(dpath):
             lv = fn.split('-')[1]
