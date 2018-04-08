@@ -317,7 +317,7 @@ def individual_duration(month):
         if opath.exists(indi_dpath):
             shutil.rmtree(indi_dpath)
         os.mkdir(indi_dpath)
-        for fn in os.listdir(dpath):
+        for fn in sorted([fn for fn in os.listdir(dpath) if fn.endswith('.csv')]):
             lv = fn.split('-')[1]
             if not fn.endswith('.csv'):
                 continue
