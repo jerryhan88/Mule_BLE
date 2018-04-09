@@ -315,14 +315,13 @@ def individual_duration(month):
 
     def handle_lv_individual_duration(dpath):
         indi_dpath = opath.join(dpath, 'indiDur')
-        print(indi_dpath)
         if opath.exists(indi_dpath):
             shutil.rmtree(indi_dpath)
         os.mkdir(indi_dpath)
         for fn in sorted([fn for fn in os.listdir(dpath) if fn.endswith('.csv')]):
             if not fn.endswith('.csv'):
                 continue
-            print(datetime.datetime.now(), fn)
+            print(fn)
             lv = fn.split('-')[1]
             mule_traj = {}
             with open(opath.join(dpath, fn)) as r_csvfile:
@@ -355,14 +354,6 @@ def individual_duration(month):
                             t0, loc0 = t1, loc1
     #
     lvs_dpath = sorted([opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))])
-
-
-
-
-    handle_lv_individual_duration(lvs_dpath[3])
-
-    assert False
-
     ps = []
     for dpath in lvs_dpath:
         p = multiprocessing.Process(target=handle_lv_individual_duration, args=(dpath, ))
