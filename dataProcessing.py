@@ -401,9 +401,6 @@ def aggregate_indiDur(month):
                         writer.writerow([month, day, lv, mid, muleDayLv_duration[k]])
 
 
-
-
-
 def temp():
     madd23 = []
     for m in [2, 3]:
@@ -414,21 +411,38 @@ def temp():
             madd23.append(set(madd_mid.keys()))
     madd2, madd3 = madd23
     print(len(madd2.intersection(madd3)))
-    
+
+    inter = madd2.intersection(madd3)
+
     df = pd.read_csv(opath.join(get_base_dpath(2), 'M2-aggIndiDur.csv'))
-    
+    df = df.groupby(['mid', 'day']).sum()['duration'].reset_index()
+    df = df.groupby(['mid']).count()['day'].to_frame('days').reset_index()
+    df['days'].hist()
+
     len(df)
     df.head()
     df['duration'].hist()
     df['duration'].argmax()
+    df['duration'].max()
     df.iloc[[168272]]
-    
 
+    df[(df['duration'] <= 3600 * 10) & (df['duration'] >= 3600 * 1)]['duration'].hist()
+    df[(df['duration'] <= 3600 * 0.5)]['duration'].hist()
 
+    df = df[(df['duration'] >= 3600 * 1)]
 
+    type()
 
+    len()
+    m2_mid = set(df[(df['day'] > 3)]['mid'])
 
+    df['day'].hist()
 
+    numDay_mid = sorted(list(zip(df.groupby(['mid']).size().tolist(), df.groupby(['mid']).size().index)))
+
+    df
+
+    len(set(df['mid']))
 
 
 def gen_indiTrajectory(month, floor, dow=WED):
