@@ -457,9 +457,9 @@ def gen_indiTrajectory(month):
                     reader = csv.DictReader(r_csvfile)
                     for row in reader:
                         cTime_dt = get_dt(row['fTime'])
-                        tLoc = row['location']
+                        tLoc = str(int(row['location'][-4:]))
                         if handling_day != cTime_dt.day:
-                            pTime_dt, fLoc = cTime_dt, row['location']
+                            pTime_dt, fLoc = cTime_dt, str(int(row['location'][-4:]))
                             handling_day = cTime_dt.day
                             continue
                         new_row = [pTime_dt.month, pTime_dt.day, pTime_dt.hour, int(pTime_dt.minute / Intv),
