@@ -460,6 +460,7 @@ def gen_indiTrajectory(month):
                         tLoc = row['location']
                         if handling_day != cTime_dt.day:
                             pTime_dt, fLoc = cTime_dt, row['location']
+                            handling_day = cTime_dt.day
                             continue
                         new_row = [pTime_dt.month, pTime_dt.day, pTime_dt.hour, int(pTime_dt.minute / Intv),
                                    fLoc, tLoc, tuple(lmPairSP[fLoc, tLoc])]
