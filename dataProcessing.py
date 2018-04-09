@@ -19,12 +19,16 @@ PL_RANGE = [3, 7, 10]
 PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
 MIN_BATTERY_POWER, MAX_BATTERY_POWER = 980, 1000
 LEAST_DAYS = 4
+TARGET_LVS = {'Lv2', 'Lv4'}
 
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
 beacons_fpath = opath.join('z_data', 'BeaconLocation.xlsx')
 rawTraj2_fpath = opath.join('z_data', 'location_archival_2017_2_1.csv.gz')
 rawTraj3_fpath = opath.join('z_data', 'location_archival_2017_3_1.csv.gz')
+
+
+get_dt = lambda tf_str: datetime.datetime.fromtimestamp(time.mktime(time.strptime(tf_str, "%Y-%m-%d %H:%M:%S")))
 
 
 def get_base_dpath(month):
@@ -328,7 +332,7 @@ def individual_duration(month):
             with open(opath.join(dpath, fn)) as r_csvfile:
                 reader = csv.DictReader(r_csvfile)
                 for row in reader:
-                    t1 = datetime.datetime.fromtimestamp(time.mktime(time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")))
+                    t1 = get_dt(row['time'])
                     madd, loc1 = [row[cn] for cn in ['id', 'location']]
                     if madd not in mule_traj:
                         mule_traj[madd] = []
@@ -415,102 +419,112 @@ def filter_mules(month):
         pickle.dump(active_mids, fp)
 
 
-def temp():
-    month = 2
+def gen_indiTrajectory(month):
     month_dpath = get_base_dpath(month)
-
     am_fpath = opath.join(month_dpath, '_activeMules-M%d.pkl' % month)
     with open(am_fpath, 'rb') as fp:
         active_mids = pickle.load(fp)
-
-
-    lvs_dpath = sorted([opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if
-                        opath.isdir(opath.join(month_dpath, dname))])
-    for lv_dpath in lvs_dpath:
+    #
+    for dname in os.listdir(month_dpath):
+        if not opath.isdir(opath.join(month_dpath, dname)):
+            continue
+        _, lv = dname.split('-')
+        if lv not in TARGET_LVS:
+            continue
+        lmPairSP = get_lmPairSP(lv)
+        #
+        lv_dpath = opath.join(month_dpath, dname)
         indiDur_dpath = opath.join(lv_dpath, 'indiDur')
+        indiTraj_dpath = opath.join(lv_dpath, 'indiTraj')
+        if opath.exists(indiTraj_dpath):
+            shutil.rmtree(indiTraj_dpath)
+        os.mkdir(indiTraj_dpath)
         for fn in sorted([fn for fn in os.listdir(indiDur_dpath) if fn.endswith('.csv')]):
             _, _, _mid = fn[:-len('.csv')].split('-')
             mid = int(_mid[1:])
             if mid not in active_mids:
                 continue
-            print(mid, fn)
-            fpath = opath.join(indiDur_dpath, fn)
+            ifpath = opath.join(indiDur_dpath, fn)
+            ofpath = opath.join(indiTraj_dpath, fn)
+            with open(ofpath, 'w') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                new_header = ['month', 'day', 'hour', 'epoch', 'fLoc', 'tLoc', 'trajectory']
+                writer.writerow(new_header)
+                #
+                handling_day = - 1
+                prevTime, fLoc = None, None
+                with open(ifpath) as r_csvfile:
+                    reader = csv.DictReader(r_csvfile)
+                    for row in reader:
+                        cTime_dt = get_dt(row['fTime'])
+                        tLoc = row['location']
+                        if handling_day != cTime_dt.day:
+                            pTime_dt, fLoc = cTime_dt, row['location']
+                            continue
+                        new_row = [pTime_dt.month, pTime_dt.day, pTime_dt.hour, int(pTime_dt.minute / Intv),
+                                   fLoc, tLoc, tuple(lmPairSP[fLoc, tLoc])]
+                        writer.writerow(new_row)
+                        #
+                        pTime_dt, fLoc = cTime_dt, tLoc
 
 
-            # check day change and initialize the previous loc!!
-
-        assert False
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def gen_indiTrajectory(month, floor, dow=WED):
-    base_dpath = get_base_dpath(month)
-    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
-    muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
-    mule_index, index_mule = {}, {}
-    for hour in HOUR_9AM_6PM:
-        indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
-        if not opath.exists(indi_dpath):
-            os.mkdir(indi_dpath)
-        for fn in os.listdir(lw_dpath):
-            if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
-                continue
-            prefix = fn[len('traj-'):-len('-20170201.csv')]
-            suffix = fn[-len('20170201.csv'):]
-            mules_ts_logs = {}
-            with open(opath.join(lw_dpath, fn)) as r_csvfile:
-                reader = csv.DictReader(r_csvfile)
-                for row in reader:
-                    t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
-                    curTime = datetime.datetime.fromtimestamp(time.mktime(t))
-                    mid = row['id']
-                    if mid not in mules_ts_logs:
-                        mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
-                    if mid not in mule_index:
-                        _id = len(mule_index)
-                        mule_index[mid] = _id
-                        index_mule[_id] = mid
-                    k = int(curTime.minute / Intv)
-                    mules_ts_logs[mid][k].append((curTime, row['location']))
-            for mid, ts_logs in mules_ts_logs.items():
-                for k, traj in enumerate(ts_logs):
-                    if len(traj) < 2:
-                        continue
-                    traj.sort()
-                    indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mule_index[mid], suffix))
-                    with open(indi_tra_fpath, 'w') as w_csvfile:
-                        writer = csv.writer(w_csvfile, lineterminator='\n')
-                        new_headers = ['fTime', 'tTime', 'duration', 'location']
-                        writer.writerow(new_headers)
-                        t0, l0 = None, ''
-                        for t1, l1 in traj:
-                            if t0 is None:
-                                t0, l0 = t1, l1
-                            if l1 != l0:
-                                new_row = [t0, t1, (t1 - t0).seconds, l0]
-                                writer.writerow(new_row)
-                                t0, l0 = t1, l1
-                        if l1 == l0:
-                            new_row = [t0, t1, (t1 - t0).seconds, l0]
-                            writer.writerow(new_row)
-    with open(muleID_fpath, 'wb') as fp:
-        pickle.dump([mule_index, index_mule], fp)
+# def gen_indiTrajectory(month, floor, dow=WED):
+#     base_dpath = get_base_dpath(month)
+#     lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
+#     muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
+#     mule_index, index_mule = {}, {}
+#     for hour in HOUR_9AM_6PM:
+#         indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
+#         if not opath.exists(indi_dpath):
+#             os.mkdir(indi_dpath)
+#         for fn in os.listdir(lw_dpath):
+#             if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
+#                 continue
+#             prefix = fn[len('traj-'):-len('-20170201.csv')]
+#             suffix = fn[-len('20170201.csv'):]
+#             mules_ts_logs = {}
+#             with open(opath.join(lw_dpath, fn)) as r_csvfile:
+#                 reader = csv.DictReader(r_csvfile)
+#                 for row in reader:
+#                     t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
+#                     curTime = datetime.datetime.fromtimestamp(time.mktime(t))
+#                     mid = row['id']
+#                     if mid not in mules_ts_logs:
+#                         mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
+#                     if mid not in mule_index:
+#                         _id = len(mule_index)
+#                         mule_index[mid] = _id
+#                         index_mule[_id] = mid
+#                     k = int(curTime.minute / Intv)
+#                     mules_ts_logs[mid][k].append((curTime, row['location']))
+#             for mid, ts_logs in mules_ts_logs.items():
+#                 for k, traj in enumerate(ts_logs):
+#                     if len(traj) < 2:
+#                         continue
+#                     traj.sort()
+#                     indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mule_index[mid], suffix))
+#                     with open(indi_tra_fpath, 'w') as w_csvfile:
+#                         writer = csv.writer(w_csvfile, lineterminator='\n')
+#                         new_headers = ['fTime', 'tTime', 'duration', 'location']
+#                         writer.writerow(new_headers)
+#                         t0, l0 = None, ''
+#                         for t1, l1 in traj:
+#                             if t0 is None:
+#                                 t0, l0 = t1, l1
+#                             if l1 != l0:
+#                                 new_row = [t0, t1, (t1 - t0).seconds, l0]
+#                                 writer.writerow(new_row)
+#                                 t0, l0 = t1, l1
+#                         if l1 == l0:
+#                             new_row = [t0, t1, (t1 - t0).seconds, l0]
+#                             writer.writerow(new_row)
+#     with open(muleID_fpath, 'wb') as fp:
+#         pickle.dump([mule_index, index_mule], fp)
 
 
 def aggregate_indiTrajectory(month, floor, dow=WED):
