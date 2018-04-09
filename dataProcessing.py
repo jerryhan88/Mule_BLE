@@ -322,6 +322,7 @@ def individual_duration(month):
         for fn in sorted([fn for fn in os.listdir(dpath) if fn.endswith('.csv')]):
             if not fn.endswith('.csv'):
                 continue
+            print(datetime.datetime.now(), fn)
             lv = fn.split('-')[1]
             mule_traj = {}
             with open(opath.join(dpath, fn)) as r_csvfile:
@@ -355,11 +356,12 @@ def individual_duration(month):
     #
     lvs_dpath = sorted([opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))])
 
-    print(lvs_dpath[3])
+
+
+
+    handle_lv_individual_duration(lvs_dpath[3])
 
     assert False
-
-    handle_lv_individual_duration(dpath[0])
 
     ps = []
     for dpath in lvs_dpath:
