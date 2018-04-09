@@ -420,11 +420,16 @@ def filter_mules(month):
 
 
 def gen_indiTrajectory(month):
-    month_dpath = get_base_dpath(month)
-    am_fpath = opath.join(month_dpath, '_activeMules-M%d.pkl' % month)
-    with open(am_fpath, 'rb') as fp:
+    m2 = 2
+    with open(opath.join(get_base_dpath(m2), '_activeMules-M%d.pkl' % m2), 'rb') as fp:
         active_mids = pickle.load(fp)
+    with open(opath.join(get_base_dpath(m2), '_muleID-M%d.pkl' % m2), 'rb') as fp:
+        m2_madd_mid, _ = pickle.load(fp)
     #
+    month_dpath = get_base_dpath(month)
+    muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+    with open(muleID_fpath, 'rb') as fp:
+        madd_mid, mid_madd = pickle.load(fp)
     for dname in os.listdir(month_dpath):
         if not opath.isdir(opath.join(month_dpath, dname)):
             continue
@@ -442,8 +447,13 @@ def gen_indiTrajectory(month):
         for fn in sorted([fn for fn in os.listdir(indiDur_dpath) if fn.endswith('.csv')]):
             _, _, _mid = fn[:-len('.csv')].split('-')
             mid = int(_mid[1:])
-            if mid not in active_mids:
-                continue
+            if month == 2:
+                if mid not in active_mids:
+                    continue
+            else:
+                assert month == 3
+                if m2_madd_mid[mid_madd[mid]] not in active_mids:
+                    continue
             ifpath = opath.join(indiDur_dpath, fn)
             ofpath = opath.join(indiTraj_dpath, fn)
             with open(ofpath, 'w') as w_csvfile:
@@ -645,7 +655,7 @@ def get_p_kmbl(floor, dow=MON, hour=9):
         dow_count = 0
         dt = datetime.datetime(*map(int, [_year, _month, _day]))
         while dt.month < next_month:
-            if dt.weekday() == dow:
+            if dt  == dow:
                 dow_count += 1
             dt += datetime.timedelta(days=1)
         #
