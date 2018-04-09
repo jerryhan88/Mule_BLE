@@ -448,7 +448,7 @@ def gen_indiTrajectory(month):
             ofpath = opath.join(indiTraj_dpath, fn)
             with open(ofpath, 'w') as w_csvfile:
                 writer = csv.writer(w_csvfile, lineterminator='\n')
-                new_header = ['month', 'day', 'hour', 'epoch', 'fLoc', 'tLoc', 'trajectory', 'bTime', 'eTime']
+                new_header = ['month', 'day', 'hour', 'epoch', 'fLoc', 'tLoc', 'trajectory', 'dow', 'bTime', 'eTime']
                 writer.writerow(new_header)
                 #
                 handling_day = - 1
@@ -464,7 +464,7 @@ def gen_indiTrajectory(month):
                             continue
                         new_row = [pTime_dt.month, pTime_dt.day, pTime_dt.hour, int(pTime_dt.minute / Intv),
                                    fLoc, tLoc, tuple(lmPairSP[fLoc, tLoc]),
-                                   pTime_dt, cTime_dt]
+                                   pTime_dt.weekday(), pTime_dt, cTime_dt]
                         writer.writerow(new_row)
                         #
                         pTime_dt, fLoc = cTime_dt, tLoc
