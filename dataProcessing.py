@@ -452,6 +452,8 @@ def gen_indiTrajectory(month):
                     continue
             else:
                 assert month == 3
+                if mid_madd[mid] not in m2_madd_mid:
+                    continue
                 if m2_madd_mid[mid_madd[mid]] not in active_mids:
                     continue
             ifpath = opath.join(indiDur_dpath, fn)
