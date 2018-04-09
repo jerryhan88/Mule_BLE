@@ -353,7 +353,7 @@ def individual_duration(month):
                             writer.writerow([madd_mid[madd], t0, t1, (t1 - t0).seconds, loc0])
                             t0, loc0 = t1, loc1
     #
-    lvs_dpath = [opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))]
+    lvs_dpath = sorted([opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if opath.isdir(opath.join(month_dpath, dname))])
 
     print(lvs_dpath[3])
 
