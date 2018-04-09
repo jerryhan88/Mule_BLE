@@ -18,6 +18,7 @@ Intv = 60 / N_TIMESLOT
 PL_RANGE = [3, 7, 10]
 PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
 MIN_BATTERY_POWER, MAX_BATTERY_POWER = 980, 1000
+LEAST_DAYS = 4
 
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
@@ -401,48 +402,61 @@ def aggregate_indiDur(month):
                         writer.writerow([month, day, lv, mid, muleDayLv_duration[k]])
 
 
-def temp():
-    madd23 = []
-    for m in [2, 3]:
-        month_dpath = get_base_dpath(m)
-        muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % m)
-        with open(muleID_fpath, 'rb') as fp:
-            madd_mid, mid_madd = pickle.load(fp)
-            madd23.append(set(madd_mid.keys()))
-    madd2, madd3 = madd23
-    print(len(madd2.intersection(madd3)))
-
-    inter = madd2.intersection(madd3)
-
-    df = pd.read_csv(opath.join(get_base_dpath(2), 'M2-aggIndiDur.csv'))
+def filter_mules(month):
+    am_fpath = opath.join(get_base_dpath(month), '_activeMules-M%d.pkl' % month)
+    #
+    df = pd.read_csv(opath.join(get_base_dpath(month), 'M2-aggIndiDur.csv'))
     df = df.groupby(['mid', 'day']).sum()['duration'].reset_index()
     df = df.groupby(['mid']).count()['day'].to_frame('days').reset_index()
-    df['days'].hist()
+    df = df[(df['days'] > LEAST_DAYS)]
+    active_mids = set(df['mid'])
+    print("# active mules in Feb.: %d" % len(active_mids))
+    with open(am_fpath, 'wb') as fp:
+        pickle.dump(active_mids, fp)
 
-    len(df)
-    df.head()
-    df['duration'].hist()
-    df['duration'].argmax()
-    df['duration'].max()
-    df.iloc[[168272]]
 
-    df[(df['duration'] <= 3600 * 10) & (df['duration'] >= 3600 * 1)]['duration'].hist()
-    df[(df['duration'] <= 3600 * 0.5)]['duration'].hist()
+def temp():
+    month = 2
+    month_dpath = get_base_dpath(month)
 
-    df = df[(df['duration'] >= 3600 * 1)]
+    am_fpath = opath.join(month_dpath, '_activeMules-M%d.pkl' % month)
+    with open(am_fpath, 'rb') as fp:
+        active_mids = pickle.load(fp)
 
-    type()
 
-    len()
-    m2_mid = set(df[(df['day'] > 3)]['mid'])
+    lvs_dpath = sorted([opath.join(month_dpath, dname) for dname in os.listdir(month_dpath) if
+                        opath.isdir(opath.join(month_dpath, dname))])
+    for lv_dpath in lvs_dpath:
+        indiDur_dpath = opath.join(lv_dpath, 'indiDur')
+        for fn in sorted([fn for fn in os.listdir(indiDur_dpath) if fn.endswith('.csv')]):
+            _, _, _mid = fn[:-len('.csv')].split('-')
+            mid = int(_mid[1:])
+            if mid not in active_mids:
+                continue
+            print(mid, fn)
+            fpath = opath.join(indiDur_dpath, fn)
 
-    df['day'].hist()
 
-    numDay_mid = sorted(list(zip(df.groupby(['mid']).size().tolist(), df.groupby(['mid']).size().index)))
+            # check day change and initialize the previous loc!!
 
-    df
+        assert False
 
-    len(set(df['mid']))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def gen_indiTrajectory(month, floor, dow=WED):
