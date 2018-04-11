@@ -20,7 +20,7 @@ PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
 MIN_BATTERY_POWER, MAX_BATTERY_POWER = 980, 1000
 LEAST_DAYS = 4
 TARGET_LVS = {'Lv2', 'Lv4'}
-
+EPOCH_LEAST_RECORDS = 3
 
 landmarks_fpath = opath.join('z_data', 'Landmarks.xlsx')
 beacons_fpath = opath.join('z_data', 'BeaconLocation.xlsx')
@@ -483,6 +483,206 @@ def gen_indiTrajectory(month):
 
 
 
+def aggregate_indiTraj(month):
+    def append_row(fpath, row):
+        with open(fpath, 'a') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            writer.writerow(row)
+    #
+    month_dpath = get_base_dpath(month)
+    #
+    for dname in os.listdir(month_dpath):
+        if not opath.isdir(opath.join(month_dpath, dname)):
+            continue
+        _, lv = dname.split('-')
+        if lv not in TARGET_LVS:
+            continue
+        lv_dpath = opath.join(month_dpath, dname)
+        indiTraj_fpath = opath.join(lv_dpath, 'M%d-%s-aggIndiTraj.csv' % (month, lv))
+        with open(indiTraj_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['lv', 'month', 'day', 'dow',
+                          'mid', 'hour', 'prevHourLoc', 'epoch', 'visitedLocs', 'bTime', 'eTime']
+            writer.writerow(new_header)
+        #
+        indiTraj_dpath = opath.join(lv_dpath, 'indiTraj')
+        for fn in sorted([fn for fn in os.listdir(indiTraj_dpath) if fn.endswith('.csv')]):
+            _, _, _mid = fn[:-len('.csv')].split('-')
+            mid = int(_mid[1:])
+            ifpath = opath.join(indiTraj_dpath, fn)
+            day0, dow0, hour0, hourPrevLoc0 = -1, -1, -1, 'X'
+            epoch0, visitedLocs = -1, set()
+            bTime0, eTime0 = None, None
+            lastLoc = None
+            with open(ifpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    day, dow, hour, epoch, fLoc, tLoc = [row[cn] for cn in ['day', 'dow', 'hour', 'epoch', 'fLoc', 'tLoc']]
+                    trajectory = eval(row['trajectory'])
+                    bTime, eTime = [get_dt(row[cn])for cn in ['bTime', 'eTime']]
+                    if day0 != day:
+                        if day0 != -1:
+                            new_row = [lv, month, day0, dow0,
+                                       mid, hour0, hourPrevLoc0, epoch0, sorted(list(visitedLocs)), bTime0, eTime0]
+                            append_row(indiTraj_fpath, new_row)
+                        day0, dow0, hour0, hourPrevLoc0 = day, dow, hour, 'X'
+                        epoch0 = epoch
+                        visitedLocs = set()
+                        for loc in trajectory:
+                            visitedLocs.add(loc)
+                        bTime0, eTime0 = bTime, eTime
+                    else:
+                        if hour0 == hour and epoch0 == epoch:
+                            for loc in trajectory:
+                                visitedLocs.add(loc)
+                            eTime0 = eTime
+                        elif hour0 == hour and epoch0 != epoch:
+                            new_row = [lv, month, day0, dow0,
+                                       mid, hour0, hourPrevLoc0, epoch0, sorted(list(visitedLocs)), bTime0, eTime0]
+                            append_row(indiTraj_fpath, new_row)
+                            #
+                            epoch0 = epoch
+                            bTime0, eTime0 = bTime, eTime
+                            visitedLocs = set()
+                            for loc in trajectory:
+                                visitedLocs.add(loc)
+                        else:
+                            assert hour0 != hour
+                            if eval(hour0) + 1 != eval(hour):
+                                hourPrevLoc0 = 'X'
+                            new_row = [lv, month, day0, dow0,
+                                       mid, hour0, hourPrevLoc0, epoch0, sorted(list(visitedLocs)), bTime0, eTime0]
+                            append_row(indiTraj_fpath, new_row)
+                            #
+                            hour0, hourPrevLoc0 = hour, lastLoc
+                            epoch0 = epoch
+                            bTime0, eTime0 = bTime, eTime
+                            visitedLocs = set()
+                            for loc in trajectory:
+                                visitedLocs.add(loc)
+                    lastLoc = tLoc
+
+
+def gen_indiCouting(month):
+    month_dpath = get_base_dpath(month)
+    indiCouting_fpath = opath.join(month_dpath, 'M%d-aggIndiCouting.csv' % month)
+    with open(indiCouting_fpath, 'w') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        new_header = ['lv', 'month', 'mid',
+                      'dow', 'hour', 'epoch',
+                      'absent', 'nReocrds', 'nVisitedLocs']
+        writer.writerow(new_header)
+    #
+    for dname in os.listdir(month_dpath):
+        if not opath.isdir(opath.join(month_dpath, dname)):
+            continue
+        _, lv = dname.split('-')
+        if lv not in TARGET_LVS:
+            continue
+        lv_dpath = opath.join(month_dpath, dname)
+        indiTraj_fpath = opath.join(lv_dpath, 'M%d-%s-aggIndiTraj.csv' % (month, lv))
+        ks = [set() for _ in range(4)]
+        indiCouting = {}
+        indiCoutingDetail = {}
+        with open(indiTraj_fpath) as r_csvfile:
+            reader = csv.DictReader(r_csvfile)
+            for row in reader:
+                mid, dow, hour, epoch = [row[cn] for cn in ['mid', 'dow', 'hour', 'epoch']]
+                k0 = [mid, dow, hour, epoch]
+                for i, ele in enumerate(k0):
+                    ks[i].add(ele)
+                absent = 1 if row['prevHourLoc'] == 'X' else 0
+                k1 = tuple(k0 + [absent])
+                if k1 not in indiCouting:
+                    indiCouting[k1] = 0
+                    indiCoutingDetail[k1] = {}
+                indiCouting[k1] += 1
+                for loc in eval(row['visitedLocs']):
+                    if loc not in indiCoutingDetail[k1]:
+                        indiCoutingDetail[k1][loc] = 0
+                    indiCoutingDetail[k1][loc] += 1
+        with open(indiCouting_fpath, 'a') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            mids, dows, hours, epochs = ks
+            for mid in sorted(list(mids)):
+                for dow in sorted(list(dows)):
+                    for hour in sorted(list(hours)):
+                        for epoch in sorted(list(epochs)):
+                            k0 = (mid, dow, hour, epoch, 0)
+                            k1 = (mid, dow, hour, epoch, 1)
+                            if k0 in indiCouting and k1 in indiCouting:
+                                if indiCouting[k0] + indiCouting[k1] < EPOCH_LEAST_RECORDS:
+                                    continue
+                                writer.writerow([lv, month, mid,
+                                                 dow, hour, epoch,
+                                                 0, indiCouting[k0], indiCoutingDetail[k0]])
+                                writer.writerow([lv, month, mid,
+                                                 dow, hour, epoch,
+                                                 1, indiCouting[k1], indiCoutingDetail[k1]])
+                            else:
+                                if k0 in indiCouting:
+                                    assert k1 not in indiCouting
+                                    if indiCouting[k0] < EPOCH_LEAST_RECORDS:
+                                        continue
+                                    writer.writerow([lv, month, mid,
+                                                     dow, hour, epoch,
+                                                     0, indiCouting[k0], indiCoutingDetail[k0]])
+                                elif k1 in indiCouting:
+                                    assert k0 not in indiCouting
+                                    if indiCouting[k1] < EPOCH_LEAST_RECORDS:
+                                        continue
+                                    writer.writerow([lv, month, mid,
+                                                     dow, hour, epoch,
+                                                     1, indiCouting[k1], indiCoutingDetail[k1]])
+
+
+def get_p_kmbl(floor, dow=MON, hour=9):
+    base_dpath = get_base_dpath(2)
+    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
+    p_kmbl_fpath = opath.join(base_dpath, 'p_kmbl-%s.pkl' % fdh)
+    if not opath.exists(p_kmbl_fpath):
+        p_kmbl = {}
+        fn = opath.basename(rawTraj2_fpath)
+        _, _, _year, _month, _day = fn[:-len('.csv.gz')].split('_')
+        next_month = int(_month) + 1
+        dow_count = 0
+        dt = datetime.datetime(*map(int, [_year, _month, _day]))
+        while dt.month < next_month:
+            if dt  == dow:
+                dow_count += 1
+            dt += datetime.timedelta(days=1)
+        #
+        mTraj = get_mTraj(floor, dow, hour)
+        plCovLD = get_plCovLD(floor)
+        for mid in mTraj:
+            for k in range(N_TIMESLOT):
+                day_lms = []
+                if k in mTraj[mid]:
+                    for _date, trajectories in mTraj[mid][k]:
+                        lms = set()
+                        for aTrajectory in trajectories:
+                            if type(aTrajectory) == tuple:
+                                lms = lms.union(set(aTrajectory))
+                            else:
+                                lms = lms.union([aTrajectory])
+                        day_lms.append(lms)
+                for (bid, l), lms0 in plCovLD.items():
+                    covLM = set(lms0)
+                    covCount = 0
+                    for lm1 in day_lms:
+                        if covLM.intersection(lm1):
+                            covCount += 1
+                    p_kmbl[k, mid, bid, l] = covCount / dow_count
+        with open(p_kmbl_fpath, 'wb') as fp:
+            pickle.dump(p_kmbl, fp)
+    else:
+        with open(p_kmbl_fpath, 'rb') as fp:
+            p_kmbl = pickle.load(fp)
+    #
+    return p_kmbl
+
+
+
 
 
 
@@ -766,6 +966,10 @@ if __name__ == '__main__':
     # get_gridLayout(floor)
 
     # arrange_M3_muleTraj(floor)
-    print(get_M3muleLMs(floor, '20170301'))
+    # print(get_M3muleLMs(floor, '20170301'))
+
+    aggregate_indiTraj(2)
+    # gen_indiCouting(2)
+
 
 
