@@ -8,6 +8,7 @@ from math import sqrt
 from xlrd import open_workbook
 import csv, gzip
 import pickle
+from functools import reduce
 
 
 HOUR_9AM_6PM = [h for h in range(9, 18)]
@@ -659,10 +660,10 @@ def gen_p_kmbl():
             #
             dow, hour, epoch, absent = [row[cn] for cn in ['dow', 'hour', 'epoch', 'absent']]
             nReocrds, nVisitedLocs = [eval(row[cn]) for cn in ['nReocrds', 'nVisitedLocs']]
-            for bid in bids[lv]:
+            for bid, bidLong in enumerate(bids[lv]):
                 for pl in range(len(PL_RANGE)):
                     visitedLocs = set(nVisitedLocs.keys())
-                    coveringLD = set(plCovLD[lv][bid, pl])
+                    coveringLD = set(plCovLD[lv][bidLong, pl])
                     intersectLocs = visitedLocs.intersection(coveringLD)
                     if intersectLocs:
                         _p_kmbl = 1
@@ -733,6 +734,66 @@ def arrange_p_kmbl():
             pickle.dump(dh_p_kmbl, fp)
 
 
+def arrange_trajByDay():
+    month = 2
+    month_dpath = get_base_dpath(month)
+    muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+    with open(muleID_fpath, 'rb') as fp:
+        madd_mid2, mid_madd2 = pickle.load(fp)
+    target_dh_madd = {}
+    for lv in TARGET_LVS:
+        fpath = opath.join(month_dpath, '__M%d-%s-muleDH.csv' % (month, lv))
+        with open(fpath) as r_csvfile:
+            reader = csv.DictReader(r_csvfile)
+            for row in reader:
+                dow, hour = [int(row[cn]) for cn in ['dow', 'hour']]
+                target_dh_madd[dow, hour] = set([mid_madd2[int(_mid)] for _mid in eval(row['mules'])])
+    month = 3
+    month_dpath = get_base_dpath(month)
+    muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+    with open(muleID_fpath, 'rb') as fp:
+        madd_mid3, mid_madd3 = pickle.load(fp)
+    indiTraj_fpath = opath.join(month_dpath, 'M%d-aggIndiTraj.csv' % month)
+    lv_ddh_mules = {lv: {} for lv in TARGET_LVS}
+    with open(indiTraj_fpath) as r_csvfile:
+        reader = csv.DictReader(r_csvfile)
+        for row in reader:
+            lv = row['lv']
+            month, day, dow, hour, epoch = [int(row[cn]) for cn in ['month', 'day', 'dow', 'hour', 'epoch']]
+            trajBD_dpath = reduce(opath.join, [month_dpath, 'M%d-%s' % (month, lv), 'trajByDay'])
+            if not opath.exists(trajBD_dpath):
+                os.mkdir(trajBD_dpath)
+            mid = int(row['mid'])
+            if mid_madd3[mid] not in target_dh_madd[dow, hour]:
+                continue
+            if (day, dow, hour) not in lv_ddh_mules[lv]:
+                lv_ddh_mules[lv][day, dow, hour] = set()
+            lv_ddh_mules[lv][day, dow, hour].add(mid)
+            fpath = opath.join(trajBD_dpath, '%02d%02d-H%02d-W%d.csv' % (month, day, hour, dow))
+            if not opath.exists(fpath):
+                with open(fpath, 'w') as w_csvfile:
+                    writer = csv.writer(w_csvfile, lineterminator='\n')
+                    new_header = ['month', 'day', 'dow', 'hour', 'epoch',
+                                  'mid', 'absent', 'visitedLocs']
+                    writer.writerow(new_header)
+            new_row = [month, day, dow, hour, epoch,
+                       mid, 1 if row['prevHourLoc'] == 'X' else 0, row['visitedLocs']]
+            with open(fpath, 'a') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                writer.writerow(new_row)
+    #
+    for lv in TARGET_LVS:
+        dh_mules_fpath = opath.join(month_dpath, '__M%d-%s-muleDH.csv' % (month, lv))
+        with open(dh_mules_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['day', 'dow', 'hour', 'numMules', 'mules']
+            writer.writerow(new_header)
+            for day, dow, hour in lv_ddh_mules[lv]:
+                writer.writerow([day, dow, hour,
+                                 len(lv_ddh_mules[lv][day, dow, hour]), list(lv_ddh_mules[lv][day, dow, hour])])
+
+
+
 def arrange_M3_muleTraj(floor):
     fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
     if not opath.exists(fTraj_dpath):
@@ -798,8 +859,9 @@ def get_M3muleLMs(floor, yyyymmdd):
 if __name__ == '__main__':
     # aggregate_indiTraj(2)
     # gen_indiCouting(2)
-    # get_p_kmbl()
+    gen_p_kmbl()
     arrange_p_kmbl()
+    # arrange_trajByDay()
 
 
 
