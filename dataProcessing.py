@@ -573,7 +573,7 @@ def gen_indiCouting(month):
         writer.writerow(new_header)
     #
     indiTraj_fpath = opath.join(month_dpath, 'M%d-aggIndiTraj.csv' % month)
-    ks = [set() for _ in range(4)]
+    ks = [set() for _ in range(5)]
     indiCouting = {}
     indiCoutingDetail = {}
     with open(indiTraj_fpath) as r_csvfile:
@@ -595,8 +595,8 @@ def gen_indiCouting(month):
                 indiCoutingDetail[k1][loc] += 1
     with open(indiCouting_fpath, 'a') as w_csvfile:
         writer = csv.writer(w_csvfile, lineterminator='\n')
-        mids, dows, hours, epochs = ks
-        for lv in ['Lv2', 'Lv4']:
+        lvs, mids, dows, hours, epochs = ks
+        for lv in lvs:
             for mid in sorted(list(mids)):
                 for dow in sorted(list(dows)):
                     for hour in sorted(list(hours)):
