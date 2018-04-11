@@ -629,7 +629,7 @@ def gen_indiCouting(month):
                                                      1, indiCouting[k1], indiCoutingDetail[k1]])
 
 
-def get_p_kmbl():
+def gen_p_kmbl():
     month = 2
     month_dpath = get_base_dpath(month)
     indiCouting_fpath = opath.join(month_dpath, 'M%d-aggIndiCouting.csv' % month)
