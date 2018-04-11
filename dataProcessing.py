@@ -629,267 +629,108 @@ def gen_indiCouting(month):
                                                      1, indiCouting[k1], indiCoutingDetail[k1]])
 
 
-def get_p_kmbl(floor, dow=MON, hour=9):
-    base_dpath = get_base_dpath(2)
-    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-    p_kmbl_fpath = opath.join(base_dpath, 'p_kmbl-%s.pkl' % fdh)
-    if not opath.exists(p_kmbl_fpath):
-        p_kmbl = {}
-        fn = opath.basename(rawTraj2_fpath)
-        _, _, _year, _month, _day = fn[:-len('.csv.gz')].split('_')
-        next_month = int(_month) + 1
-        dow_count = 0
-        dt = datetime.datetime(*map(int, [_year, _month, _day]))
-        while dt.month < next_month:
-            if dt  == dow:
-                dow_count += 1
-            dt += datetime.timedelta(days=1)
-        #
-        mTraj = get_mTraj(floor, dow, hour)
-        plCovLD = get_plCovLD(floor)
-        for mid in mTraj:
-            for k in range(N_TIMESLOT):
-                day_lms = []
-                if k in mTraj[mid]:
-                    for _date, trajectories in mTraj[mid][k]:
-                        lms = set()
-                        for aTrajectory in trajectories:
-                            if type(aTrajectory) == tuple:
-                                lms = lms.union(set(aTrajectory))
-                            else:
-                                lms = lms.union([aTrajectory])
-                        day_lms.append(lms)
-                for (bid, l), lms0 in plCovLD.items():
-                    covLM = set(lms0)
-                    covCount = 0
-                    for lm1 in day_lms:
-                        if covLM.intersection(lm1):
-                            covCount += 1
-                    p_kmbl[k, mid, bid, l] = covCount / dow_count
-        with open(p_kmbl_fpath, 'wb') as fp:
-            pickle.dump(p_kmbl, fp)
-    else:
-        with open(p_kmbl_fpath, 'rb') as fp:
-            p_kmbl = pickle.load(fp)
-    #
-    return p_kmbl
-
-
-
-
-
-
-
-# def gen_indiTrajectory(month, floor, dow=WED):
-#     base_dpath = get_base_dpath(month)
-#     lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
-#     muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
-#     mule_index, index_mule = {}, {}
-#     for hour in HOUR_9AM_6PM:
-#         indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
-#         if not opath.exists(indi_dpath):
-#             os.mkdir(indi_dpath)
-#         for fn in os.listdir(lw_dpath):
-#             if not fnmatch.fnmatch(fn, '*-H%02d-*.csv' % hour):
-#                 continue
-#             prefix = fn[len('traj-'):-len('-20170201.csv')]
-#             suffix = fn[-len('20170201.csv'):]
-#             mules_ts_logs = {}
-#             with open(opath.join(lw_dpath, fn)) as r_csvfile:
-#                 reader = csv.DictReader(r_csvfile)
-#                 for row in reader:
-#                     t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
-#                     curTime = datetime.datetime.fromtimestamp(time.mktime(t))
-#                     mid = row['id']
-#                     if mid not in mules_ts_logs:
-#                         mules_ts_logs[mid] = [[] for _ in range(N_TIMESLOT)]
-#                     if mid not in mule_index:
-#                         _id = len(mule_index)
-#                         mule_index[mid] = _id
-#                         index_mule[_id] = mid
-#                     k = int(curTime.minute / Intv)
-#                     mules_ts_logs[mid][k].append((curTime, row['location']))
-#             for mid, ts_logs in mules_ts_logs.items():
-#                 for k, traj in enumerate(ts_logs):
-#                     if len(traj) < 2:
-#                         continue
-#                     traj.sort()
-#                     indi_tra_fpath = opath.join(indi_dpath, 'indiTraj-%s-K%d-m%d-%s' % (prefix, k, mule_index[mid], suffix))
-#                     with open(indi_tra_fpath, 'w') as w_csvfile:
-#                         writer = csv.writer(w_csvfile, lineterminator='\n')
-#                         new_headers = ['fTime', 'tTime', 'duration', 'location']
-#                         writer.writerow(new_headers)
-#                         t0, l0 = None, ''
-#                         for t1, l1 in traj:
-#                             if t0 is None:
-#                                 t0, l0 = t1, l1
-#                             if l1 != l0:
-#                                 new_row = [t0, t1, (t1 - t0).seconds, l0]
-#                                 writer.writerow(new_row)
-#                                 t0, l0 = t1, l1
-#                         if l1 == l0:
-#                             new_row = [t0, t1, (t1 - t0).seconds, l0]
-#                             writer.writerow(new_row)
-#     with open(muleID_fpath, 'wb') as fp:
-#         pickle.dump([mule_index, index_mule], fp)
-
-
-def aggregate_indiTrajectory(month, floor, dow=WED):
-    base_dpath = get_base_dpath(month)
-    lmPairSP = get_lmPairSP(floor)
-    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
-    mids = set()
-    for hour in HOUR_9AM_6PM:
-        indi_dpath = opath.join(lw_dpath, 'indiTraj-%s-W%d-H%02d' % (floor, dow, hour))
-        if not opath.exists(indi_dpath):
-            continue
-        for fn in os.listdir(indi_dpath):
-            if not fnmatch.fnmatch(fn, '*.csv'):
-                continue
-            _, _, _, _, _, mid, _ = fn[:-len('.csv')].split('-')
-            mids.add(mid)
-    mids = sorted(list(mids))
-    for hour in HOUR_9AM_6PM:
-        fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-        indiTraj_prefix = 'indiTraj-%s' % fdh
-        indi_dpath = opath.join(lw_dpath, indiTraj_prefix)
-        fns = os.listdir(indi_dpath)
-        #
-        indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
-        if not opath.exists(indiS_dpath):
-            os.mkdir(indiS_dpath)
-        for mid in mids:
-            indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-%s.csv' % (fdh, mid))
-            fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-*-%s-*.csv' % (indiTraj_prefix, mid))]
-            if not fnsF:
-                continue
-            with open(indiTrajS_fpath, 'w') as w_csvfile:
-                writer = csv.writer(w_csvfile, lineterminator='\n')
-                new_headers = ['date', 'timeslot', 'trajectories']
-                writer.writerow(new_headers)
-            for k in range(N_TIMESLOT):
-                fnsF = [fn for fn in fns if fnmatch.fnmatch(fn, '%s-K%d-%s-*.csv' % (indiTraj_prefix, k, mid))]
-                if not fnsF:
-                    continue
-                for fn in fnsF:
-                    _, _, _, _, _, _, yyyymmdd = fn[:-len('.csv')].split('-')
-                    trajectories = set()
-                    with open(opath.join(indi_dpath, fn), 'rt') as r_csvfile:
-                        reader = csv.DictReader(r_csvfile)
-                        prevLM = None
-                        for row in reader:
-                            locationID = row['location']
-                            curLM = str(int(locationID[-4:]))
-                            if prevLM is not None:
-                                path = tuple(lmPairSP[prevLM, curLM])
-                                reversedPath = tuple(reversed(path))
-                                if path not in trajectories and reversedPath not in trajectories:
-                                    trajectories.add(path)
-                            prevLM = curLM
-                        if not trajectories:
-                            trajectories.add(prevLM)
-                    with open(indiTrajS_fpath, 'a') as w_csvfile:
+def get_p_kmbl():
+    month = 2
+    month_dpath = get_base_dpath(month)
+    indiCouting_fpath = opath.join(month_dpath, 'M%d-aggIndiCouting.csv' % month)
+    bids, plCovLD = {}, {}
+    with open(indiCouting_fpath) as r_csvfile:
+        reader = csv.DictReader(r_csvfile)
+        for row in reader:
+            lv = row['lv']
+            lv_dpath = opath.join(month_dpath, 'M%d-%s' % (month, lv))
+            p_dpath = opath.join(lv_dpath, 'p_kmbl')
+            if not opath.exists(p_dpath):
+                os.mkdir(p_dpath)
+            mid = row['mid']
+            _mid = 'm%s' % mid
+            fpath = opath.join(p_dpath, 'M%d-%s-%s.csv' % (month, lv, _mid))
+            if not opath.exists(fpath):
+                with open(fpath, 'w') as w_csvfile:
+                    writer = csv.writer(w_csvfile, lineterminator='\n')
+                    new_header = ['lv', 'mid', 'dow', 'hour', 'epoch', 'absent',
+                                  'bid', 'pl', 'p_kmbl',
+                                  'nReocrds', 'withinLocs']
+                    writer.writerow(new_header)
+            if lv not in bids:
+                bzDist = get_bzDist(lv)
+                bids[lv] = list(bzDist.keys())
+                plCovLD[lv] = get_plCovLD(lv)
+            #
+            dow, hour, epoch, absent = [row[cn] for cn in ['dow', 'hour', 'epoch', 'absent']]
+            nReocrds, nVisitedLocs = [eval(row[cn]) for cn in ['nReocrds', 'nVisitedLocs']]
+            for bid in bids[lv]:
+                for pl in range(len(PL_RANGE)):
+                    visitedLocs = set(nVisitedLocs.keys())
+                    coveringLD = set(plCovLD[lv][bid, pl])
+                    intersectLocs = visitedLocs.intersection(coveringLD)
+                    if intersectLocs:
+                        _p_kmbl = 1
+                        for loc in intersectLocs:
+                            _p_kmbl *= (1 - (int(nVisitedLocs[loc]) / float(nReocrds)))
+                            if _p_kmbl == 0.0:
+                                break
+                        p_kmbl = 1 - _p_kmbl
+                    else:
+                        p_kmbl = 0.0
+                    new_row = [lv, mid, dow, hour, epoch, absent,
+                               bid, pl, p_kmbl, nReocrds, dict((loc, nVisitedLocs[loc]) for loc in intersectLocs)]
+                    with open(fpath, 'a') as w_csvfile:
                         writer = csv.writer(w_csvfile, lineterminator='\n')
-                        new_row = [yyyymmdd, k, list(trajectories)]
                         writer.writerow(new_row)
 
 
-def get_mTraj(floor, dow=MON, hour=9):
-    base_dpath = get_base_dpath(2)
-    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-    lw_dpath = opath.join(base_dpath, 'traj-%s-W%d' % (floor, dow))
-    indiS_dpath = opath.join(lw_dpath, 'indiTrajS-%s' % fdh)
-    mTraj_fpath = opath.join(indiS_dpath, '_indiTrajS-%s.pkl' % fdh)
-    if not opath.exists(mTraj_fpath):
-        #
-        # Apply filtering first
-        #
-        filteredF = []
-        for fn in os.listdir(indiS_dpath):
-            if not fnmatch.fnmatch(fn, '*.csv'):
-                continue
-            _, _, _, _, mid = fn[:-len('.csv')].split('-')
-            fpath = opath.join(indiS_dpath, fn)
-            df = pd.read_csv(fpath)
-            if len(df) < 2:
-                continue
-            for ts, count in df.groupby(['timeslot']).count()['date'].reset_index().values:
-                if count < 3:
-                    break
-            else:
-                filteredF.append(fn)
-        mTraj = {}
-        for fn in filteredF:
-            _, _, _, _, mid = fn[:-len('.csv')].split('-')
-            mTraj[mid] = {}
-            with open(opath.join(indiS_dpath, fn)) as r_csvfile:
-                    reader = csv.DictReader(r_csvfile)
-                    for row in reader:
-                        _date, ts = row['date'], int(row['timeslot'])
-                        trajectories = eval(row['trajectories'])
-                        if ts not in mTraj[mid]:
-                            mTraj[mid][ts] = []
-                        mTraj[mid][ts].append([_date, trajectories])
-        with open(mTraj_fpath, 'wb') as fp:
-            pickle.dump(mTraj, fp)
-    else:
-        with open(mTraj_fpath, 'rb') as fp:
-            mTraj = pickle.load(fp)
-    return mTraj
+def arrange_p_kmbl():
+    month = 2
+    month_dpath = get_base_dpath(month)
 
-
-def get_p_kmbl(floor, dow=MON, hour=9):
-    base_dpath = get_base_dpath(2)
-    fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-    p_kmbl_fpath = opath.join(base_dpath, 'p_kmbl-%s.pkl' % fdh)
-    if not opath.exists(p_kmbl_fpath):
-        p_kmbl = {}
-        fn = opath.basename(rawTraj2_fpath)
-        _, _, _year, _month, _day = fn[:-len('.csv.gz')].split('_')
-        next_month = int(_month) + 1
-        dow_count = 0
-        dt = datetime.datetime(*map(int, [_year, _month, _day]))
-        while dt.month < next_month:
-            if dt  == dow:
-                dow_count += 1
-            dt += datetime.timedelta(days=1)
-        #
-        mTraj = get_mTraj(floor, dow, hour)
-        plCovLD = get_plCovLD(floor)
-        for mid in mTraj:
-            for k in range(N_TIMESLOT):
-                day_lms = []
-                if k in mTraj[mid]:
-                    for _date, trajectories in mTraj[mid][k]:
-                        lms = set()
-                        for aTrajectory in trajectories:
-                            if type(aTrajectory) == tuple:
-                                lms = lms.union(set(aTrajectory))
-                            else:
-                                lms = lms.union([aTrajectory])
-                        day_lms.append(lms)
-                for (bid, l), lms0 in plCovLD.items():
-                    covLM = set(lms0)
-                    covCount = 0
-                    for lm1 in day_lms:
-                        if covLM.intersection(lm1):
-                            covCount += 1
-                    p_kmbl[k, mid, bid, l] = covCount / dow_count
+    for dname in os.listdir(month_dpath):
+        if not opath.isdir(opath.join(month_dpath, dname)):
+            continue
+        _, lv = dname.split('-')
+        if lv not in TARGET_LVS:
+            continue
+        lv_dpath = opath.join(month_dpath, dname)
+        p0_dpath = opath.join(lv_dpath, 'p_kmbl')
+        p1_dpath = opath.join(lv_dpath, 'arr_p_kmbl')
+        if not opath.exists(p1_dpath):
+            os.mkdir(p1_dpath)
+        dh_mules, dh_p_kmbl = {}, {}
+        for fn in os.listdir(p0_dpath):
+            if not fn.endswith('.csv'):
+                continue
+            with open(opath.join(p0_dpath, fn)) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    dow, hour = [int(row[cn]) for cn in ['dow', 'hour']]
+                    fpath = opath.join(p1_dpath, 'W%d-H%02d.csv' % (dow, hour))
+                    if not opath.exists(fpath):
+                        with open(fpath, 'w') as w_csvfile:
+                            writer = csv.writer(w_csvfile, lineterminator='\n')
+                            new_header = ['lv', 'dow', 'hour', 'absent', 'epoch', 'mid', 'bid', 'pl', 'p_kmbl']
+                            writer.writerow(new_header)
+                    absent, epoch, mid, bid, pl = [row[cn] for cn in ['absent', 'epoch', 'mid', 'bid', 'pl']]
+                    p_kmbl = eval(row['p_kmbl'])
+                    if (dow, hour) not in dh_mules:
+                        dh_mules[dow, hour] = set()
+                        dh_p_kmbl[dow, hour] = {}
+                    dh_mules[dow, hour].add(mid)
+                    dh_p_kmbl[dow, hour][absent, epoch, mid, bid, pl] = p_kmbl
+                    #
+                    new_row = [lv, dow, hour, absent, epoch, mid, bid, pl, p_kmbl]
+                    with open(fpath, 'a') as w_csvfile:
+                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                        writer.writerow(new_row)
+        dh_mules_fpath = opath.join(month_dpath, '__M%d-%s-muleDH.csv' % (month, lv))
+        with open(dh_mules_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['dow', 'hour', 'numMules', 'mules']
+            writer.writerow(new_header)
+            for dow, hour in dh_mules:
+                writer.writerow([dow, hour, len(dh_mules[dow, hour]), list(dh_mules[dow, hour])])
+        p_kmbl_fpath = opath.join(month_dpath, '_M%d-%s-p_kmbl.pkl' % (month, lv))
         with open(p_kmbl_fpath, 'wb') as fp:
-            pickle.dump(p_kmbl, fp)
-    else:
-        with open(p_kmbl_fpath, 'rb') as fp:
-            p_kmbl = pickle.load(fp)
-    #
-    return p_kmbl
-
-
-def get_midMule(month, floor, dow):
-    lw_dpath = opath.join(get_base_dpath(month), 'traj-%s-W%d' % (floor, dow))
-    muleID_fpath = opath.join(lw_dpath, '_muleID-%s-W%d.pkl' % (floor, dow))
-    with open(muleID_fpath, 'rb') as fp:
-        mule_index, index_mule = pickle.load(fp)
-    return mule_index, index_mule
+            pickle.dump(dh_p_kmbl, fp)
 
 
 def arrange_M3_muleTraj(floor):
@@ -955,14 +796,10 @@ def get_M3muleLMs(floor, yyyymmdd):
     return M3muleLMs, mid_M2M3
 
 if __name__ == '__main__':
-    floor = 'Lv4'
-    # get_gridLayout(floor)
-
-    # arrange_M3_muleTraj(floor)
-    # print(get_M3muleLMs(floor, '20170301'))
-
-    aggregate_indiTraj(2)
+    # aggregate_indiTraj(2)
     # gen_indiCouting(2)
+    # get_p_kmbl()
+    arrange_p_kmbl()
 
 
 
