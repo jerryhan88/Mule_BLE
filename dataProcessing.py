@@ -572,43 +572,37 @@ def gen_indiCouting(month):
                       'absent', 'nReocrds', 'nVisitedLocs']
         writer.writerow(new_header)
     #
-    for dname in os.listdir(month_dpath):
-        if not opath.isdir(opath.join(month_dpath, dname)):
-            continue
-        _, lv = dname.split('-')
-        if lv not in TARGET_LVS:
-            continue
-        lv_dpath = opath.join(month_dpath, dname)
-        indiTraj_fpath = opath.join(lv_dpath, 'M%d-%s-aggIndiTraj.csv' % (month, lv))
-        ks = [set() for _ in range(4)]
-        indiCouting = {}
-        indiCoutingDetail = {}
-        with open(indiTraj_fpath) as r_csvfile:
-            reader = csv.DictReader(r_csvfile)
-            for row in reader:
-                mid, dow, hour, epoch = [row[cn] for cn in ['mid', 'dow', 'hour', 'epoch']]
-                k0 = [mid, dow, hour, epoch]
-                for i, ele in enumerate(k0):
-                    ks[i].add(ele)
-                absent = 1 if row['prevHourLoc'] == 'X' else 0
-                k1 = tuple(k0 + [absent])
-                if k1 not in indiCouting:
-                    indiCouting[k1] = 0
-                    indiCoutingDetail[k1] = {}
-                indiCouting[k1] += 1
-                for loc in eval(row['visitedLocs']):
-                    if loc not in indiCoutingDetail[k1]:
-                        indiCoutingDetail[k1][loc] = 0
-                    indiCoutingDetail[k1][loc] += 1
-        with open(indiCouting_fpath, 'a') as w_csvfile:
-            writer = csv.writer(w_csvfile, lineterminator='\n')
-            mids, dows, hours, epochs = ks
+    indiTraj_fpath = opath.join(month_dpath, 'M%d-aggIndiTraj.csv' % month)
+    ks = [set() for _ in range(4)]
+    indiCouting = {}
+    indiCoutingDetail = {}
+    with open(indiTraj_fpath) as r_csvfile:
+        reader = csv.DictReader(r_csvfile)
+        for row in reader:
+            lv, mid, dow, hour, epoch = [row[cn] for cn in ['lv', 'mid', 'dow', 'hour', 'epoch']]
+            k0 = [lv, mid, dow, hour, epoch]
+            for i, ele in enumerate(k0):
+                ks[i].add(ele)
+            absent = 1 if row['prevHourLoc'] == 'X' else 0
+            k1 = tuple(k0 + [absent])
+            if k1 not in indiCouting:
+                indiCouting[k1] = 0
+                indiCoutingDetail[k1] = {}
+            indiCouting[k1] += 1
+            for loc in eval(row['visitedLocs']):
+                if loc not in indiCoutingDetail[k1]:
+                    indiCoutingDetail[k1][loc] = 0
+                indiCoutingDetail[k1][loc] += 1
+    with open(indiCouting_fpath, 'a') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        mids, dows, hours, epochs = ks
+        for lv in ['Lv2', 'Lv4']:
             for mid in sorted(list(mids)):
                 for dow in sorted(list(dows)):
                     for hour in sorted(list(hours)):
                         for epoch in sorted(list(epochs)):
-                            k0 = (mid, dow, hour, epoch, 0)
-                            k1 = (mid, dow, hour, epoch, 1)
+                            k0 = (lv, mid, dow, hour, epoch, 0)
+                            k1 = (lv, mid, dow, hour, epoch, 1)
                             if k0 in indiCouting and k1 in indiCouting:
                                 if indiCouting[k0] + indiCouting[k1] < EPOCH_LEAST_RECORDS:
                                     continue
