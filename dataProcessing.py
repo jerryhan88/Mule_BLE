@@ -490,6 +490,12 @@ def aggregate_indiTraj(month):
             writer.writerow(row)
     #
     month_dpath = get_base_dpath(month)
+    indiTraj_fpath = opath.join(month_dpath, 'M%d-aggIndiTraj.csv' % month)
+    with open(indiTraj_fpath, 'w') as w_csvfile:
+        writer = csv.writer(w_csvfile, lineterminator='\n')
+        new_header = ['lv', 'month', 'day', 'dow',
+                      'mid', 'hour', 'prevHourLoc', 'epoch', 'visitedLocs', 'bTime', 'eTime']
+        writer.writerow(new_header)
     #
     for dname in os.listdir(month_dpath):
         if not opath.isdir(opath.join(month_dpath, dname)):
@@ -498,13 +504,6 @@ def aggregate_indiTraj(month):
         if lv not in TARGET_LVS:
             continue
         lv_dpath = opath.join(month_dpath, dname)
-        indiTraj_fpath = opath.join(lv_dpath, 'M%d-%s-aggIndiTraj.csv' % (month, lv))
-        with open(indiTraj_fpath, 'w') as w_csvfile:
-            writer = csv.writer(w_csvfile, lineterminator='\n')
-            new_header = ['lv', 'month', 'day', 'dow',
-                          'mid', 'hour', 'prevHourLoc', 'epoch', 'visitedLocs', 'bTime', 'eTime']
-            writer.writerow(new_header)
-        #
         indiTraj_dpath = opath.join(lv_dpath, 'indiTraj')
         for fn in sorted([fn for fn in os.listdir(indiTraj_dpath) if fn.endswith('.csv')]):
             _, _, _mid = fn[:-len('.csv')].split('-')
