@@ -740,14 +740,14 @@ def arrange_trajByDay():
     muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
     with open(muleID_fpath, 'rb') as fp:
         madd_mid2, mid_madd2 = pickle.load(fp)
-    target_dh_madd = {}
+    lv_dh_madd = {lv: {} for lv in TARGET_LVS}
     for lv in TARGET_LVS:
         fpath = opath.join(month_dpath, '__M%d-%s-muleDH.csv' % (month, lv))
         with open(fpath) as r_csvfile:
             reader = csv.DictReader(r_csvfile)
             for row in reader:
                 dow, hour = [int(row[cn]) for cn in ['dow', 'hour']]
-                target_dh_madd[dow, hour] = set([mid_madd2[int(_mid)] for _mid in eval(row['mules'])])
+                lv_dh_madd[lv][dow, hour] = set([mid_madd2[int(_mid)] for _mid in eval(row['mules'])])
     month = 3
     month_dpath = get_base_dpath(month)
     muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
@@ -764,7 +764,7 @@ def arrange_trajByDay():
             if not opath.exists(trajBD_dpath):
                 os.mkdir(trajBD_dpath)
             mid = int(row['mid'])
-            if mid_madd3[mid] not in target_dh_madd[dow, hour]:
+            if mid_madd3[mid] not in lv_dh_madd[lv][dow, hour]:
                 continue
             if (day, dow, hour) not in lv_ddh_mules[lv]:
                 lv_ddh_mules[lv][day, dow, hour] = set()
@@ -859,9 +859,9 @@ def get_M3muleLMs(floor, yyyymmdd):
 if __name__ == '__main__':
     # aggregate_indiTraj(2)
     # gen_indiCouting(2)
-    gen_p_kmbl()
-    arrange_p_kmbl()
-    # arrange_trajByDay()
+    # gen_p_kmbl()
+    # arrange_p_kmbl()
+    arrange_trajByDay()
 
 
 

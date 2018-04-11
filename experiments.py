@@ -42,13 +42,8 @@ def get_timeHorizon():
     return timeHorizon
 
 
-def get_base_inputs(floor):
-    beacon2landmark = get_beacon2landmark(floor)
-    bid_index, index_bid = {}, {}
-    for i, beaconID in enumerate(beacon2landmark.keys()):
-        bid_index[beaconID] = i
-        index_bid[i] = beaconID
-    B = list(range(len(bid_index)))
+def get_base_inputs(lv):
+    B = list(range(len(get_bzDist(lv))))
     #
     L = list(range(len(PL_RANGE)))
     e_l = PL_CUNSUME
@@ -59,8 +54,7 @@ def get_base_inputs(floor):
     #
     base_inputs = {'B': B,
                    'L': L, 'e_l': e_l,
-                   'K': K, 'R': R,
-                   'bid_index': bid_index, 'index_bid': index_bid}
+                   'K': K, 'R': R}
     return base_inputs
 
 
@@ -101,8 +95,23 @@ def estimation(hour, M3muleLMs, mid_M2M3,
     return unCoveredBK, selectedMules3
 
 
-def run_experiments_MA(repeatNum, floor, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5, N_s=10):
-    base_inputs = get_base_inputs(floor)
+def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5, N_s=10):
+
+
+
+
+
+    base_inputs = get_base_inputs(lv)
+
+
+
+
+
+
+
+
+
+
     bid_index, index_bid = base_inputs['bid_index'], base_inputs['index_bid']
     plCovLD = get_plCovLD(floor)
     numBK = len(base_inputs['B']) * len(base_inputs['K'])
@@ -313,6 +322,6 @@ if __name__ == '__main__':
     # run_experiments_FL('Lv4')
     import time
     oldTime = time.time()
-    run_experiments_MA(1001, 'Lv4', N_g=50)
+    run_experiments_MA(1001, 'Lv2', N_g=50)
     print(time.time() - oldTime)
     # summary_MA()
