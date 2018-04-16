@@ -793,75 +793,118 @@ def arrange_trajByDay():
                                  len(lv_ddh_mules[lv][day, dow, hour]), list(lv_ddh_mules[lv][day, dow, hour])])
 
 
+def get_timeHorizon():
+    dt = datetime.datetime(2017, 3, 1)
+    firstDOW = dt.weekday()
+    timeHorizon = []
+    while True:
+        dow = dt.weekday()
+        if dow in [MON, TUE, WED, THR, FRI]:
+            for hour in range(9, 18):
+                dt = datetime.datetime(dt.year, dt.month, dt.day, hour)
+                timeHorizon.append(dt)
+        dt += datetime.timedelta(days=1)
+        if dt.weekday() == firstDOW:
+            break
+    return timeHorizon
 
-def arrange_M3_muleTraj(floor):
-    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
-    if not opath.exists(fTraj_dpath):
-        os.mkdir(fTraj_dpath)
+def init_experiments():
+    exp_dpath = opath.join('z_data', '_experiments')
+    __mid_madd = []
+    for month in range(2, 4):
+        month_dpath = get_base_dpath(month)
+        muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+        with open(muleID_fpath, 'rb') as fp:
+            _, mid_madd = pickle.load(fp)
+            __mid_madd.append(mid_madd)
+    mid_madd2, mid_madd3 = __mid_madd
     #
-    for dow in [MON, TUE, WED, THR, FRI]:
-        lw_dpath3 = opath.join(get_base_dpath(3), 'traj-%s-W%d' % (floor, dow))
-        mule_index2, index_mule2 = get_midMule(2, floor, dow)
-        mule_index3, index_mule3 = get_midMule(3, floor, dow)
-        for hour in range(9, 18):
-            mTraj2 = get_mTraj(floor, dow, hour)
-            fdh = '%s-W%d-H%02d' % (floor, dow, hour)
-            indiS_dpath = opath.join(lw_dpath3, 'indiTrajS-%s' % fdh)
-            #
-            for mid in mTraj2:
-                mid2 = int(mid[len('m'):])
-                ori_mid = index_mule2[mid2]
-                if ori_mid not in mule_index3:
-                    continue
-                mid3 = mule_index3[ori_mid]
-                indiTrajS_fpath = opath.join(indiS_dpath, 'indiTrajS-%s-m%d.csv' % (fdh, mid3))
-                if not opath.exists(indiTrajS_fpath):
-                    continue
-                with open(indiTrajS_fpath) as r_csvfile:
+    timeHorizon = get_timeHorizon()
+    dh_madd_ab_p_kbl = {}
+    for lv in TARGET_LVS:
+        lv_dpath = opath.join(exp_dpath, lv)
+        if not opath.exists(lv_dpath):
+            os.mkdir(lv_dpath)
+        p_dpath = opath.join(lv_dpath, 'p_kmbl')
+        if not opath.exists(p_dpath):
+            os.mkdir(p_dpath)
+        epochs, bids, pls = set(), set(), set()
+        for dt in timeHorizon:
+            dh = (dt.weekday(), dt.hour)
+            if dh not in dh_madd_ab_p_kbl:
+                dh_madd_ab_p_kbl[dh] = {}
+                month = 2
+                m2_p_fpath = reduce(opath.join, [get_base_dpath(month), 'M%d-%s' % (month, lv),
+                              'arr_p_kmbl', 'W%d-H%02d.csv' % (dt.weekday(), dt.hour)])
+                with open(m2_p_fpath) as r_csvfile:
                     reader = csv.DictReader(r_csvfile)
                     for row in reader:
-                        _date = row['date']
-                        fpath = opath.join(fTraj_dpath, 'fTraj-%s.csv' % _date)
-                        if not opath.exists(fpath):
-                            with open(fpath, 'w') as w_csvfile:
-                                writer = csv.writer(w_csvfile, lineterminator='\n')
-                                new_headers = ['date', 'hour', 'timeslot', 'mid', 'mid_M2', 'mid_M3', 'trajectories']
-                                writer.writerow(new_headers)
-                        with open(fpath, 'a') as w_csvfile:
-                            writer = csv.writer(w_csvfile, lineterminator='\n')
-                            writer.writerow([_date, hour, row['timeslot'], ori_mid, mid2, mid3, row['trajectories']])
-
-
-def get_M3muleLMs(floor, yyyymmdd):
-    fTraj_dpath = opath.join(get_base_dpath(3), 'fTraj-%s' % floor)
-    fpath = opath.join(fTraj_dpath, 'fTraj-%s.csv' % yyyymmdd)
-    M3muleLMs, mid_M2M3 = {}, {}
-    with open(fpath) as r_csvfile:
-        reader = csv.DictReader(r_csvfile)
-        for row in reader:
-            lms = set()
-            for aTrajectory in eval(row['trajectories']):
-                if type(aTrajectory) == tuple:
-                    lms = lms.union(set(aTrajectory))
-                else:
-                    lms = lms.union([aTrajectory])
+                        mid0 = int(row['mid'])
+                        madd = mid_madd2[mid0]
+                        if madd not in dh_madd_ab_p_kbl[dh]:
+                            dh_madd_ab_p_kbl[dh][madd] = {}
+                        absent, epoch, bid, pl = [int(row[cn]) for cn in ['absent', 'epoch', 'bid', 'pl']]
+                        if absent not in dh_madd_ab_p_kbl[dh][madd]:
+                            dh_madd_ab_p_kbl[dh][madd][absent] = {}
+                        dh_madd_ab_p_kbl[dh][madd][absent][epoch, bid, pl] = eval(row['p_kmbl'])
+                        epochs.add(epoch)
+                        bids.add(bid)
+                        pls.add(pl)
             #
-            mid2, mid3 = [int(row[cn]) for cn in ['mid_M2', 'mid_M3']]
-            if mid2 not in mid_M2M3:
-                mid_M2M3[mid2] = mid3
-            if mid3 not in M3muleLMs:
-                M3muleLMs[mid3] = {}
-            hour, k = map(int, [row[cn] for cn in ['hour', 'timeslot']])
-            M3muleLMs[mid3][hour, k] = lms
-    #
-    return M3muleLMs, mid_M2M3
+            m3_p_fpath = opath.join(p_dpath, 'p_kmbl-%02d%02d-H%02d.csv' % (dt.month, dt.day, dt.hour))
+            with open(m3_p_fpath, 'w') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                new_header = ['day', 'dow', 'hour', 'epoch', 'mid', 'bid', 'pl', 'p_kmbl']
+                writer.writerow(new_header)
+            #
+            madd_ab_p_kbl = dh_madd_ab_p_kbl[dh]
+            trajByDay_fpath = reduce(opath.join, [get_base_dpath(dt.month), 'M%d-%s' % (dt.month, lv),
+             'trajByDay', '%02d%02d-H%02d-W%d.csv' % (dt.month, dt.day, dt.hour, dt.weekday())])
+            mid0_mid1 = {}
+            with open(trajByDay_fpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    mid0 = int(row['mid'])
+                    if mid0 not in mid0_mid1:
+                        mid0_mid1[mid0] = len(mid0_mid1)
+                    mid1 = mid0_mid1[mid0]
+                    if mid_madd3[mid0] not in madd_ab_p_kbl:
+                        p_kmbl = 0.0
+                        for k in epochs:
+                            for bid in bids:
+                                for pl in pls:
+                                    with open(m3_p_fpath, 'a') as w_csvfile:
+                                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                                        new_row = [dt.day, dt.weekday(), dt.hour,
+                                                   k, mid1, bid, pl, p_kmbl]
+                                        writer.writerow(new_row)
+                    else:
+                        madd = mid_madd3[mid0]
+                        absent = int(row['absent'])
+                        for k in epochs:
+                            for bid in bids:
+                                for pl in pls:
+                                    if absent not in madd_ab_p_kbl[madd]:
+                                        p_kmbl = 0.0
+                                    else:
+                                        if (epoch, bid, pl) not in madd_ab_p_kbl[madd][absent]:
+                                            p_kmbl = 0.0
+                                        else:
+                                            p_kmbl = madd_ab_p_kbl[madd][absent][epoch, bid, pl]
+                                    with open(m3_p_fpath, 'a') as w_csvfile:
+                                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                                        new_row = [dt.day, dt.weekday(), dt.hour,
+                                                   k, mid1, bid, pl, p_kmbl]
+                                        writer.writerow(new_row)
+
 
 if __name__ == '__main__':
     # aggregate_indiTraj(2)
     # gen_indiCouting(2)
     # gen_p_kmbl()
     # arrange_p_kmbl()
-    arrange_trajByDay()
+    # arrange_trajByDay()
+    init_experiments()
 
 
 
