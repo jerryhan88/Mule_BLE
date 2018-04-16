@@ -290,9 +290,10 @@ def summary_MA():
 
 
 if __name__ == '__main__':
-    # run_experiments_FL('Lv4')
+    for lv in TARGET_LVS:
+        run_experiments_FL(lv)
     # import time
     # oldTime = time.time()
-    run_experiments_MA(1000, 'Lv2', N_g=50)
+    # run_experiments_MA(1000, 'Lv2', N_g=50)
     # print(time.time() - oldTime)
     # summary_MA()

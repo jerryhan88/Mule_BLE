@@ -822,8 +822,6 @@ def init_experiments():
     #
     timeHorizon = get_timeHorizon()
     for lv in TARGET_LVS:
-        if lv == 'Lv2':
-            continue
         dh_madd_ab_p_kbl = {}
         lv_dpath = opath.join(exp_dpath, lv)
         if not opath.exists(lv_dpath):
