@@ -821,8 +821,10 @@ def init_experiments():
     mid_madd2, mid_madd3 = __mid_madd
     #
     timeHorizon = get_timeHorizon()
-    dh_madd_ab_p_kbl = {}
     for lv in TARGET_LVS:
+        if lv == 'Lv2':
+            continue
+        dh_madd_ab_p_kbl = {}
         lv_dpath = opath.join(exp_dpath, lv)
         if not opath.exists(lv_dpath):
             os.mkdir(lv_dpath)
