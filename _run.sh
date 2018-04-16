@@ -28,6 +28,6 @@
 #python3 -c "from dataProcessing import arrange_M3_muleTraj; arrange_M3_muleTraj('Lv4')" &
 
 
-for repeatNum in {1..9}; do
-    python3 -c "from experiments1 import run_experiments_MA; run_experiments_MA($repeatNum, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5)" &
+for repeatNum in {1..10}; do
+    python3 -c "from experiments import run_experiments_MA; run_experiments_MA($repeatNum, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5)" &
 done
