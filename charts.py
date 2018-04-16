@@ -1,10 +1,11 @@
 import os.path as opath
-import os, fnmatch
 import csv
 import numpy as np
 import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
+from functools import reduce
+
 
 _rgb = lambda r, g, b: (r / float(255), g / float(255), b / float(255))
 clists = (
@@ -50,7 +51,7 @@ mlists = (
     )
 
 FIGSIZE = (8, 6)
-FIGSIZE2 =(8, 4)
+FIGSIZE2 = (8, 4)
 
 _fontsize = 14
 yLabels = {'obj1': 'Obj1',
@@ -60,37 +61,30 @@ yLabels = {'obj1': 'Obj1',
 
 id_dow = {i: dow for i, dow in enumerate(['Mon.', 'Tue.', 'Wed.', 'Thr.', 'Fri.'])}
 
+
 def numMules():
-    floor = 'Lv2'
-    res_fpath = opath.join('z_data', 'res-%s-FL%d.csv' % (floor, 0))
     times, measures = [], []
-    aMeasure = []
-    with open(res_fpath) as r_csvfile:
-        reader = csv.DictReader(r_csvfile)
-        for row in reader:
-            yyyymmdd = row['date']
-            year = int(yyyymmdd[:-len('mmdd')])
-            month = int(yyyymmdd[len('yyyy'):-len('dd')])
-            day = int(yyyymmdd[len('yyyymm'):])
-            hour = int(row['hour'])
-            times.append('%s H%02d' % (id_dow[datetime.datetime(year, month, day).weekday()], hour))
-            aMeasure.append(int(row['numMules2']))
-    measures.append(aMeasure)
+    for i, lv in enumerate(['Lv2', 'Lv4']):
+        res_fpath = reduce(opath.join, ['z_data', '_experiments', lv, 'FL', 'res-FL%d.csv' % 0])
+        aMeasure = []
+        with open(res_fpath) as r_csvfile:
+            reader = csv.DictReader(r_csvfile)
+            for row in reader:
+                if i == 0:
+                    yyyymmdd = row['date']
+                    year = int(yyyymmdd[:-len('mmdd')])
+                    month = int(yyyymmdd[len('yyyy'):-len('dd')])
+                    day = int(yyyymmdd[len('yyyymm'):])
+                    hour = int(row['hour'])
+                    times.append('%s H%02d' % (id_dow[datetime.datetime(year, month, day).weekday()], hour))
+                aMeasure.append(int(row['numMules']))
+        measures.append(aMeasure)
     xticks_index, xticks_label = [], []
     for i, yyyymmddhh in enumerate(times):
         if 'H09' in yyyymmddhh:
             xticks_index.append(i)
             xticks_label.append(yyyymmddhh)
     #
-    floor = 'Lv4'
-    res_fpath = opath.join('z_data', 'res-%s-FL%d.csv' % (floor, 0))
-    aMeasure = []
-    with open(res_fpath) as r_csvfile:
-        reader = csv.DictReader(r_csvfile)
-        for row in reader:
-            aMeasure.append(int(row['numMules2']))
-    measures.append(aMeasure)
-
     fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
     # ax.set_xlabel('Time', fontsize=_fontsize)
@@ -108,11 +102,12 @@ def numMules():
 
 
 def objectivs_sim():
-    floor = 'Lv2'
-    ma_prefix = '%s-G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)' % floor
+    # lv = 'Lv2'
+    lv = 'Lv4'
+    ma_prefix = 'G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)'
     #
     # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
-    # mea, _ylim, legendLoc = 'obj2', (-2, 65), 'upper right'
+    # mea, _ylim, legendLoc = 'obj2', (-2, 130), 'upper right'
     # mea, _ylim, legendLoc = 'obj2', None, 'upper center'
     # mea, _ylim, legendLoc = 'ratioUnCoveredBK', (-0.01, 0.1), 'upper right'
     mea, _ylim, legendLoc = 'ratioUnCoveredBK', None, 'upper right'
@@ -121,22 +116,27 @@ def objectivs_sim():
     # Fixed power levels
     #
     for l in range(3):
-        res_fpath = opath.join('z_data', 'res-%s-FL%d.csv' % (floor, l))
+        res_fpath = reduce(opath.join, ['z_data', '_experiments', lv, 'FL', 'res-FL%d.csv' % l])
         aMeasure = []
         with open(res_fpath) as r_csvfile:
             reader = csv.DictReader(r_csvfile)
             for row in reader:
                 if l == 0:
                     yyyymmdd = row['date']
-                    mm = yyyymmdd[len('yyyymm'):]
                     hour = int(row['hour'])
-                    times.append('Mar.%s H%02d' % (mm, hour))
+                    # mm = yyyymmdd[len('yyyymm'):]
+                    # times.append('Mar.%s H%02d' % (mm, hour))
+
+
+
+                    times.append('%s H%02d' % (id_dow[int(row['dow'])], hour))
+
                 aMeasure.append(float(row[mea]))
         measures.append(aMeasure)
     #
     # MA
     #
-    res_fpath = opath.join('z_data', 'res-%s.csv' % ma_prefix)
+    res_fpath = reduce(opath.join, ['z_data', '_experiments', lv, 'res-%s.csv' % ma_prefix])
     aMeasure = []
     auxiliaryLines = [[], []]
     with open(res_fpath) as r_csvfile:
@@ -169,7 +169,7 @@ def objectivs_sim():
     ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
     plt.ylim(_ylim)
-    img_ofpath = '%s-%s.pdf' % (mea, ma_prefix)
+    img_ofpath = '%s-%s-%s.pdf' % (lv, mea, ma_prefix)
     plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
 
 
@@ -268,5 +268,5 @@ def boxPlots():
 if __name__ == '__main__':
     # numMules()
     # objectivs_sim()
-    evolution()
-    # boxPlots()
+    # evolution()
+    boxPlots()
