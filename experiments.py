@@ -179,7 +179,8 @@ def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5,
             writer = csv.writer(w_csvfile, lineterminator='\n')
             writer.writerow(new_row)
         #
-        c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] - SCANNING_ENERGY for b in inputs['B']]
+        # c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] - SCANNING_ENERGY for b in inputs['B']]
+        c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] for b in inputs['B']]
 
 
 def run_experiments_FL(lv):

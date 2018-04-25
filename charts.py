@@ -102,9 +102,9 @@ def numMules():
 
 
 def objectivs_sim():
-    lv = 'Lv2'
-    # lv = 'Lv4'
-    ma_prefix = 'G(50)-P(100)-O(80)-pC(0.50)-pM(0.50)'
+    # lv = 'Lv2'
+    lv = 'Lv4'
+    ma_prefix = 'G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)'
     #
     # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
     # mea, _ylim, legendLoc = 'obj2', (-2, 130), 'upper right'
