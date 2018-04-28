@@ -97,14 +97,14 @@ def numMules():
     ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
     # plt.ylim(_ylim)
-    img_ofpath = 'numMules.pdf'
+    img_ofpath = opath.join('_charts', 'numMules.pdf')
     plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
 
 
 def objectivs_sim():
-    # lv = 'Lv2'
-    lv = 'Lv4'
-    ma_prefix = 'G(50)-P(50)-O(40)-pC(0.50)-pM(0.50)'
+    lv = 'Lv2'
+    # lv = 'Lv4'
+    ma_prefix = 'G(50)-P(100)-O(80)-pC(0.50)-pM(0.50)'
     #
     # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
     # mea, _ylim, legendLoc = 'obj2', (-2, 130), 'upper right'
@@ -169,7 +169,8 @@ def objectivs_sim():
     ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
     plt.ylim(_ylim)
-    img_ofpath = '%s-%s-%s.pdf' % (lv, mea, ma_prefix)
+    img_ofpath = opath.join('_charts', '%s-%s-%s.pdf' % (lv, mea, ma_prefix))
+
     plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
 
 

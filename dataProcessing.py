@@ -483,7 +483,6 @@ def gen_indiTrajectory(month):
                         pTime_dt, fLoc = cTime_dt, tLoc
 
 
-
 def aggregate_indiTraj(month):
     def append_row(fpath, row):
         with open(fpath, 'a') as w_csvfile:
