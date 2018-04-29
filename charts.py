@@ -1,10 +1,12 @@
 import os.path as opath
-import csv
 import numpy as np
 import pandas as pd
-import datetime
 import matplotlib.pyplot as plt
+import datetime
+import csv
+import pickle
 from functools import reduce
+#
 
 
 _rgb = lambda r, g, b: (r / float(255), g / float(255), b / float(255))
@@ -49,6 +51,8 @@ mlists = (
 
     '8',  #    octagon
     )
+
+ltype = ['--', '-']
 
 FIGSIZE = (8, 6)
 FIGSIZE2 = (8, 4)
@@ -262,12 +266,46 @@ def boxPlots():
         plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
 
 
-
-
+def chart_Markov():
+    from dataProcessing import TARGET_LVS
+    comp_dpath = opath.join('z_data', '_comparision')
+    for lv in TARGET_LVS:
+        error_fpath = opath.join(comp_dpath, '_error-%s.pkl' % lv)
+        with open(error_fpath, 'rb') as fp:
+            error_xMarkov, error_Markov = pickle.load(fp)
+        # error_xMarkov, error_Markov = map(np.array, [error_xMarkov, error_Markov])
+        #
+        fig = plt.figure(figsize=FIGSIZE)
+        ax = fig.add_subplot(111)
+        for i, error in enumerate([error_xMarkov, error_Markov]):
+            error = np.sort(np.array(error))
+            yvals = np.arange(len(error)) / float(len(error) - 1)
+            plt.plot(error, yvals, ltype[i], color=clists[i])
+        # plt.legend(['%d-Step' % i for i in range(2)], ncol=1, fontsize=_fontsize)
+        ax.tick_params(axis='both', which='major', labelsize=_fontsize)
+        plt.ylim((0.0, 1.0))
+        img_ofpath = opath.join('_charts', '%s-errorCDF.pdf' % lv)
+        plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
+        plt.close()
+        #
+        fig = plt.figure(figsize=FIGSIZE)
+        ax = fig.add_subplot(111)
+        for i, error in enumerate([error_xMarkov, error_Markov]):
+            error = np.sort(np.array(error))
+            yvals = np.arange(len(error)) / float(len(error) - 1)
+            plt.plot(error, yvals, ltype[i], color=clists[i])
+        plt.legend(['%d-Step' % i for i in range(2)], ncol=1, loc='upper left', fontsize=_fontsize + 6)
+        ax.tick_params(axis='both', which='major', labelsize=_fontsize + 6)
+        plt.xlim((-0.02, 0.33))
+        plt.ylim((0.78, 0.88))
+        img_ofpath = opath.join('_charts', '%s-errorCDF_zoom.pdf' % lv)
+        plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
+        plt.close()
 
 
 if __name__ == '__main__':
     # numMules()
-    objectivs_sim()
+    # objectivs_sim()
     # evolution()
     # boxPlots()
+    chart_Markov()

@@ -2,10 +2,12 @@ import os.path as opath
 import os
 import csv
 import pickle
+from functools import reduce
 #
 from dataProcessing import get_base_dpath
 from dataProcessing import get_bzDist, get_plCovLD
 from dataProcessing import PL_RANGE, TARGET_LVS
+from dataProcessing import get_timeHorizon
 
 
 def gen_p_kmbl_xMarkov():
@@ -136,6 +138,144 @@ def arrange_p_kmbl_xMarkov():
             pickle.dump(dh_p_kmbl, fp)
 
 
+
+def comparison_summary():
+    __mid_madd = []
+    for month in range(2, 4):
+        month_dpath = get_base_dpath(month)
+        muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
+        with open(muleID_fpath, 'rb') as fp:
+            _, mid_madd = pickle.load(fp)
+            __mid_madd.append(mid_madd)
+    mid_madd2, mid_madd3 = __mid_madd
+    #
+    comp_dpath = opath.join('z_data', '_comparision')
+    timeHorizon = get_timeHorizon()
+    for lv in TARGET_LVS:
+        error_xMarkov, error_Markov = [], []
+        error_fpath = opath.join(comp_dpath, '_error-%s.pkl' % lv)
+        bid_bidLong = {}
+        for bid, bidLong in enumerate(get_bzDist(lv)):
+            bid_bidLong[bid] = bidLong
+        plCovLD = get_plCovLD(lv)
+        #
+        epochs, bids, pls = set(), set(), set()
+        for dt in timeHorizon:
+            comp_fpath = opath.join(comp_dpath, '%s-%d%02d%02dH%02d-comparision.csv' % (lv,
+                                                   dt.year, dt.month, dt.day, dt.hour))
+            with open(comp_fpath, 'w') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                new_header = ['day', 'dow', 'hour', 'epoch', 'mid', 'bid', 'pl',
+                              'visitedLocs', 'diff',
+                              'p_kmbl_xMarkov', 'p_kmbl_Markov', 'covered',
+                              'error_xMarkov', 'error_Markov']
+                writer.writerow(new_header)
+            month = 2
+            madd_ab_p_kbl = {}
+            madd_p_kbl = {}
+            #
+            m2_p1_fpath = reduce(opath.join, [get_base_dpath(month), 'M%d-%s' % (month, lv),
+                          'arr_p_kmbl', 'W%d-H%02d.csv' % (dt.weekday(), dt.hour)])
+            with open(m2_p1_fpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    mid0 = int(row['mid'])
+                    madd = mid_madd2[mid0]
+                    if madd not in madd_ab_p_kbl:
+                        madd_ab_p_kbl[madd] = {}
+                    absent, epoch, bid, pl = [int(row[cn]) for cn in ['absent', 'epoch', 'bid', 'pl']]
+                    if absent not in madd_ab_p_kbl[madd]:
+                        madd_ab_p_kbl[madd][absent] = {}
+                    madd_ab_p_kbl[madd][absent][epoch, bid, pl] = eval(row['p_kmbl'])
+                    epochs.add(epoch)
+                    bids.add(bid)
+                    pls.add(pl)
+            #
+            m2_p0_fpath = reduce(opath.join, [get_base_dpath(month), 'M%d-%s' % (month, lv),
+                                              'arr_p_kmbl_xMarkov', 'W%d-H%02d.csv' % (dt.weekday(), dt.hour)])
+            with open(m2_p0_fpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    mid0 = int(row['mid'])
+                    madd = mid_madd2[mid0]
+                    if madd not in madd_p_kbl:
+                        madd_p_kbl[madd] = {}
+                    epoch, bid, pl = [int(row[cn]) for cn in ['epoch', 'bid', 'pl']]
+                    madd_p_kbl[madd][epoch, bid, pl] = eval(row['p_kmbl'])
+            #
+            trajByDay_fpath = reduce(opath.join, [get_base_dpath(dt.month), 'M%d-%s' % (dt.month, lv),
+             'trajByDay', '%02d%02d-H%02d-W%d.csv' % (dt.month, dt.day, dt.hour, dt.weekday())])
+            m3_madd_k_ab_traj = {}
+            madd_mid = {}
+            with open(trajByDay_fpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    mid0, epoch = [int(row[cn]) for cn in ['mid', 'epoch']]
+                    madd = mid_madd3[mid0]
+                    if mid0 not in madd_mid:
+                        madd_mid[madd] = len(madd_mid)
+                    absent = int(row['absent'])
+                    m3_madd_k_ab_traj[madd, epoch] = (absent, eval(row['visitedLocs']))
+            for madd, epoch in m3_madd_k_ab_traj:
+                absent, visitedLocs = m3_madd_k_ab_traj[madd, epoch]
+                for bid in bids:
+                    for pl in pls:
+                        try:
+                            p_xMarkov = madd_p_kbl[madd][epoch, bid, pl]
+                            p_Markov = madd_ab_p_kbl[madd][absent][epoch, bid, pl]
+                        except KeyError:
+                            continue
+                        covered = 1 if set(plCovLD[bid_bidLong[bid], pl]).intersection(visitedLocs) else 0
+                        error0 = abs(covered - p_xMarkov)
+                        error1 = abs(covered - p_Markov)
+                        error_xMarkov.append(error0)
+                        error_Markov.append(error1)
+                        #
+                        with open(comp_fpath, 'a') as w_csvfile:
+                            writer = csv.writer(w_csvfile, lineterminator='\n')
+                            writer.writerow([dt.day, dt.weekday(), dt.hour,
+                                   epoch, madd_mid[madd], bid, pl,
+                                   visitedLocs, p_xMarkov - p_Markov,
+                                   p_xMarkov, p_Markov, covered,
+                                             error0, error1])
+        with open(error_fpath, 'wb') as fp:
+            pickle.dump([error_xMarkov, error_Markov], fp)
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def cdf_chart():
+    comp_dpath = opath.join('z_data', '_comparision')
+    for lv in TARGET_LVS:
+        error_fpath = opath.join(comp_dpath, '_error-%s.pkl' % lv)
+        with open(error_fpath, 'rb') as fp:
+            error_xMarkov, error_Markov = pickle.load(fp)
+        error_xMarkov, error_Markov = map(np.array, [error_xMarkov, error_Markov])
+    sorted_error_xMarkov = np.sort(error_xMarkov)
+    yvals=np.arange(len(sorted_error_xMarkov)) / float(len(sorted_error_xMarkov) - 1)
+    plt.plot(sorted_error_xMarkov,yvals)
+    
+    sorted_error_Markov = np.sort(error_Markov)
+    yvals=np.arange(len(sorted_error_Markov)) / float(len(sorted_error_Markov) - 1)
+    plt.plot(sorted_error_Markov,yvals)
+    
+    plt.show()
+    
+    
+    y, binEdges=np.histogram(sorted_error_xMarkov,bins=10000)
+    bincenters = 0.5 * (binEdges[1:]+binEdges[:-1])
+    plt.plot(bincenters,y / len(sorted_error_xMarkov),'-')
+    plt.show()
+    
+    
+    y, binEdges=np.histogram(sorted_error_Markov,bins=100)
+    bincenters = 0.5 * (binEdges[1:]+binEdges[:-1])
+    plt.plot(bincenters,y / len(sorted_error_Markov),'-')
+    plt.show()
+
+
 if __name__ == '__main__':
     # gen_p_kmbl_xMarkov()
-    arrange_p_kmbl_xMarkov()
+    # arrange_p_kmbl_xMarkov()
+    comparison_summary()

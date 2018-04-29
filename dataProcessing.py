@@ -1,5 +1,5 @@
 import os.path as opath
-import os, fnmatch, shutil
+import os, shutil
 import multiprocessing
 import datetime, time
 import networkx as nx
