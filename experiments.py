@@ -428,7 +428,7 @@ def summary_MA():
 if __name__ == '__main__':
     # init_experiments(numEpoch=1)
     #
-    run_experiments_MA(0, 4, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5)
+    run_experiments_MA(0, 2, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5, randomSolCoice=True)
 
 
     # for lv in TARGET_LVS:
