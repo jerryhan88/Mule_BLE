@@ -1,13 +1,19 @@
 import os.path as opath
 import os
-import pickle
+import csv, pickle
 import random
 import datetime
 import numpy as np
 from functools import reduce
 #
-from dataProcessing import *
-from problems import *
+from muleDuration import md_dpath
+from Markov1Step import m1s_dpath
+from muleDayTrajecty import mdt_dpath
+from beaconLayout import get_bzDist, get_plCovLD
+from muleDuration import MON, TUE, WED, THR, FRI
+from beaconLayout import PL_RANGE, TARGET_LVS
+#
+# from problems import *
 #
 # prefix = 'memeticAlgorithm'
 # pyx_fn, c_fn = '%s.pyx' % prefix, '%s.c' % prefix
@@ -20,7 +26,145 @@ from memeticAlgorithm import run as ma_run
 from fixedLevel import run as fl_run
 
 
+PL_CUNSUME = [1, 6.3095734447, 15.8489319246]
+MIN_BATTERY_POWER, MAX_BATTERY_POWER = 980, 1000
 SCANNING_ENERGY = 0.01
+
+
+exp_dpath = reduce(opath.join, ['..', '_data', 'Mule_BLE', 'experiments'])
+if not opath.exists(exp_dpath):
+    os.mkdir(exp_dpath)
+
+
+def get_timeHorizon():
+    dt = datetime.datetime(2017, 3, 1)
+    firstDOW = dt.weekday()
+    timeHorizon = []
+    while True:
+        dow = dt.weekday()
+        if dow in [MON, TUE, WED, THR, FRI]:
+            for hour in range(9, 18):
+                dt = datetime.datetime(dt.year, dt.month, dt.day, hour)
+                timeHorizon.append(dt)
+        dt += datetime.timedelta(days=1)
+        if dt.weekday() == firstDOW:
+            break
+    return timeHorizon
+
+
+def init_experiments(numEpoch=4):
+    def get_base_inputs(lv):
+        bid_bidLong = {}
+        for bid, bidLong in enumerate(get_bzDist(lv)):
+            bid_bidLong[bid] = bidLong
+        B = list(range(len(bid_bidLong)))
+        c_b = [MAX_BATTERY_POWER for _ in B]
+        #
+        L = list(range(len(PL_RANGE)))
+        e_l = PL_CUNSUME
+        #
+        K = list(range(numEpoch))
+        #
+        R = 0.9
+        #
+        base_inputs = {'B': B, 'c_b': c_b,
+                       'L': L, 'e_l': e_l,
+                       'K': K, 'R': R, 'bidConverter': bid_bidLong}
+        return base_inputs
+    #
+    ep_dpath = opath.join(exp_dpath, 'epoch%d' % numEpoch)
+    if not opath.exists(ep_dpath):
+        os.mkdir(ep_dpath)
+    __mid_madd = []
+    for month in range(2, 4):
+        muleID_fpath = reduce(opath.join, [md_dpath, 'M%d' % month, '_muleID-M%d.pkl' % month])
+        with open(muleID_fpath, 'rb') as fp:
+            _, mid_madd = pickle.load(fp)
+            __mid_madd.append(mid_madd)
+    mid_madd2, mid_madd3 = __mid_madd
+    #
+    timeHorizon = get_timeHorizon()
+    for lv in TARGET_LVS:
+        dh_madd_ab_p_kbl = {}
+        lv_dpath = opath.join(ep_dpath, lv)
+        if not opath.exists(lv_dpath):
+            os.mkdir(lv_dpath)
+        inputs_dpath = opath.join(lv_dpath, 'inputs')
+        bi_fpath = opath.join(inputs_dpath, 'base_input.pkl')
+        p_dpath = opath.join(inputs_dpath, 'p_kmbl')
+        for dpath in [inputs_dpath, p_dpath]:
+            if not opath.exists(dpath):
+                os.mkdir(dpath)
+        base_inputs = get_base_inputs(lv)
+        with open(bi_fpath, 'wb') as fp:
+            pickle.dump(base_inputs, fp)
+        epochs, bids, pls = set(), set(), set()
+        for dt in timeHorizon:
+            dh = (dt.weekday(), dt.hour)
+            if dh not in dh_madd_ab_p_kbl:
+                dh_madd_ab_p_kbl[dh] = {}
+                m2_p_fpath = reduce(opath.join, [m1s_dpath, 'epoch%d' % numEpoch, lv, 'arr_p_kmbl',
+                                    'M1SE%d-W%d-H%02d.csv' % (numEpoch, dt.weekday(), dt.hour)])
+                with open(m2_p_fpath) as r_csvfile:
+                    reader = csv.DictReader(r_csvfile)
+                    for row in reader:
+                        mid0 = int(row['mid'])
+                        madd = mid_madd2[mid0]
+                        if madd not in dh_madd_ab_p_kbl[dh]:
+                            dh_madd_ab_p_kbl[dh][madd] = {}
+                        absent, epoch, bid, pl = [int(row[cn]) for cn in ['absent', 'epoch', 'bid', 'pl']]
+                        if absent not in dh_madd_ab_p_kbl[dh][madd]:
+                            dh_madd_ab_p_kbl[dh][madd][absent] = {}
+                        dh_madd_ab_p_kbl[dh][madd][absent][epoch, bid, pl] = eval(row['p_kmbl'])
+                        epochs.add(epoch)
+                        bids.add(bid)
+                        pls.add(pl)
+            #
+            m3_p_fpath = opath.join(p_dpath, 'E%d-p-%02d%02d-H%02d.csv' % (numEpoch, dt.month, dt.day, dt.hour))
+            with open(m3_p_fpath, 'w') as w_csvfile:
+                writer = csv.writer(w_csvfile, lineterminator='\n')
+                new_header = ['day', 'dow', 'hour', 'epoch', 'mid', 'bid', 'pl', 'p_kmbl']
+                writer.writerow(new_header)
+            #
+            madd_ab_p_kbl = dh_madd_ab_p_kbl[dh]
+            mdt_fpath = reduce(opath.join, [mdt_dpath, 'epoch%d' % numEpoch, lv,
+                        'mdt-%s-%02d%02d-H%02d-W%d.csv' % (lv, dt.month, dt.day, dt.hour, dt.weekday())])
+            mid0_mid1 = {}
+            with open(mdt_fpath) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    mid0 = int(row['mid'])
+                    if mid0 not in mid0_mid1:
+                        mid0_mid1[mid0] = len(mid0_mid1)
+                    mid1 = mid0_mid1[mid0]
+                    if mid_madd3[mid0] not in madd_ab_p_kbl:
+                        p_kmbl = 0.0
+                        for k in epochs:
+                            for bid in bids:
+                                for pl in pls:
+                                    with open(m3_p_fpath, 'a') as w_csvfile:
+                                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                                        new_row = [dt.day, dt.weekday(), dt.hour,
+                                                   k, mid1, bid, pl, p_kmbl]
+                                        writer.writerow(new_row)
+                    else:
+                        madd = mid_madd3[mid0]
+                        absent = int(row['absent'])
+                        for k in epochs:
+                            for bid in bids:
+                                for pl in pls:
+                                    if absent not in madd_ab_p_kbl[madd]:
+                                        p_kmbl = 0.0
+                                    else:
+                                        if (epoch, bid, pl) not in madd_ab_p_kbl[madd][absent]:
+                                            p_kmbl = 0.0
+                                        else:
+                                            p_kmbl = madd_ab_p_kbl[madd][absent][epoch, bid, pl]
+                                    with open(m3_p_fpath, 'a') as w_csvfile:
+                                        writer = csv.writer(w_csvfile, lineterminator='\n')
+                                        new_row = [dt.day, dt.weekday(), dt.hour,
+                                                   k, mid1, bid, pl, p_kmbl]
+                                        writer.writerow(new_row)
 
 
 def copy_base_inputs(base_inputs):
@@ -31,29 +175,9 @@ def copy_base_inputs(base_inputs):
     return inputs
 
 
-def get_base_inputs(lv):
-    bid_bidLong = {}
-    for bid, bidLong in enumerate(get_bzDist(lv)):
-        bid_bidLong[bid] = bidLong
-    B = list(range(len(bid_bidLong)))
-    c_b = [MAX_BATTERY_POWER for _ in B]
-    #
-    L = list(range(len(PL_RANGE)))
-    e_l = PL_CUNSUME
-    #
-    K = list(range(N_TIMESLOT))
-    #
-    R = 0.9
-    #
-    base_inputs = {'B': B, 'c_b': c_b,
-                   'L': L, 'e_l': e_l,
-                   'K': K, 'R': R, 'bidConverter': bid_bidLong}
-    return base_inputs
-
-
-def get_M_probCov(lv, dt):
-    p_dpath = reduce(opath.join, ['z_data', '_experiments', lv, 'p_kmbl'])
-    p_fpath = opath.join(p_dpath, 'p_kmbl-%02d%02d-H%02d.csv' % (dt.month, dt.day, dt.hour))
+def get_M_probCov(numEpoch, lv, dt):
+    p_fpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'inputs', 'p_kmbl',
+              'E%d-p-%02d%02d-H%02d.csv' % (numEpoch, dt.month, dt.day, dt.hour)])
     #
     mids, p_kmbl = set(), {}
     with open(p_fpath) as r_csvfile:
@@ -66,13 +190,12 @@ def get_M_probCov(lv, dt):
     return M, p_kmbl
 
 
-def estimation(dt, lv, base_inputs, ls, ms, plCovLD):
+def estimation(dt, lv, base_inputs, ls, ms, plCovLD, numEpoch=4):
     epochVisitedLocs = {}
-    trajByDay_fpath = reduce(opath.join, [get_base_dpath(dt.month), 'M%d-%s' % (dt.month, lv),
-                                          'trajByDay',
-                                          '%02d%02d-H%02d-W%d.csv' % (dt.month, dt.day, dt.hour, dt.weekday())])
+    mdt_fpath = reduce(opath.join, [mdt_dpath, 'epoch%d' % numEpoch, lv,
+                                    'mdt-%s-%02d%02d-H%02d-W%d.csv' % (lv, dt.month, dt.day, dt.hour, dt.weekday())])
     mid0_mid1 = {}
-    with open(trajByDay_fpath) as r_csvfile:
+    with open(mdt_fpath) as r_csvfile:
         reader = csv.DictReader(r_csvfile)
         for row in reader:
             mid0, epoch = [int(row[cn]) for cn in ['mid', 'epoch']]
@@ -99,10 +222,14 @@ def estimation(dt, lv, base_inputs, ls, ms, plCovLD):
     return unCoveredBK.difference(coveringBK)
 
 
-def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5, N_s=10):
+def run_experiments_MA(repeatNum, numEpoch, lv,
+                       N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5, N_s=10,
+                       randomSolCoice=True):
+    res_dpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'results'])
+    if not opath.exists(res_dpath):
+        os.mkdir(res_dpath)
     prefix = 'G(%d)-P(%d)-O(%d)-pC(%.2f)-pM(%.2f)' % (N_g, N_p, N_o, p_c, p_m)
-    ma_dpath = reduce(opath.join, ['z_data', '_experiments', lv,
-                                   'MA-%s-R%d' % (prefix, repeatNum)])
+    ma_dpath = opath.join(res_dpath, 'MA%d-%s-R%d' % (int(randomSolCoice), prefix, repeatNum))
     if not opath.exists(ma_dpath):
         os.mkdir(ma_dpath)
     input_pkl_dpath = opath.join(ma_dpath, 'inputs')
@@ -116,7 +243,9 @@ def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5,
         writer.writerow(new_header)
     #
     timeHorizon = get_timeHorizon()
-    base_inputs = get_base_inputs(lv)
+    bi_fpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'inputs', 'base_input.pkl'])
+    with open(bi_fpath, 'rb') as fp:
+        base_inputs = pickle.load(fp)
     plCovLD = get_plCovLD(lv)
     numBK = len(base_inputs['B']) * len(base_inputs['K'])
     c_b = [MAX_BATTERY_POWER for _ in base_inputs['B']]
@@ -124,7 +253,7 @@ def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5,
         dt = timeHorizon.pop(0)
         yyyymmdd = '2017%02d%02d' % (dt.month, dt.day)
         #
-        M, p_kmbl = get_M_probCov(lv, dt)
+        M, p_kmbl = get_M_probCov(numEpoch, lv, dt)
         #
         inputs = copy_base_inputs(base_inputs)
         inputs['M'] = M
@@ -162,7 +291,14 @@ def run_experiments_MA(repeatNum, lv, N_g=300, N_p=50, N_o=40, p_c=0.5, p_m=0.5,
                 writer = csv.writer(w_csvfile, lineterminator='\n')
                 writer.writerow(new_row)
         #
-        ind = random.choice(list(paretoFront.values()))
+        if randomSolCoice:
+            ind = random.choice(list(paretoFront.values()))
+        else:
+            minMule, mmInd = 1e400, None
+            for (_, obj2), candiIndi in paretoFront.items():
+                if obj2 < minMule:
+                    minMule, mmInd = obj2, candiIndi
+            ind = mmInd
         obj1, obj2 = ind.obj1, ind.obj2
         ls = ind.g1[:]
         ms = [i for i, y_m in enumerate(ind.g2) if y_m == 1]
@@ -290,10 +426,15 @@ def summary_MA():
 
 
 if __name__ == '__main__':
+    # init_experiments(numEpoch=1)
+    #
+    run_experiments_MA(0, 4, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5)
+
+
     # for lv in TARGET_LVS:
     #     run_experiments_FL(lv)
     # import time
     # oldTime = time.time()
     # run_experiments_MA(1001, 'Lv4', N_g=50)
     # print(time.time() - oldTime)
-    summary_MA()
+    # summary_MA()
