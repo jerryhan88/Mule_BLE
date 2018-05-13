@@ -365,76 +365,88 @@ def run_experiments_FL(lv):
             c_b = [inputs['c_b'][b] - inputs['e_l'][ls[b]] for b in inputs['B']]
 
 
-def summary_MA():
-    for lv in TARGET_LVS:
-        lv_dpath = reduce(opath.join, ['z_data', '_experiments', lv])
-        prefix_dpaths = {}
-        for dn in os.listdir(lv_dpath):
-            if not dn.startswith('MA'):
-                continue
-            _, _, _, _, _, _, _repeatNum = dn.split('-')
-            prefix = dn[len('MA-'):-len('-%s' % _repeatNum)]
-            if prefix not in prefix_dpaths:
-                prefix_dpaths[prefix] = []
-            prefix_dpaths[prefix].append(opath.join(lv_dpath, dn))
-        for prefix in prefix_dpaths:
-            numBK = None
-            dateHour, dows, nms = [], {}, {}
-            obj1s, obj2s, rucs = {}, {}, {}
-            for i, dpath in enumerate(prefix_dpaths[prefix]):
-                with open(opath.join(dpath, 'res-%s.csv' % prefix)) as r_csvfile:
-                    reader = csv.DictReader(r_csvfile)
-                    for row in reader:
-                        date, hour = [row[cn] for cn in ['date', 'hour']]
-                        k = (date, hour)
-                        if i == 0:
-                            dow, numBK, nm = [int(row[cn]) for cn in ['dow', 'numBK', 'numMules']]
-                            dateHour.append(k)
-                            dows[k] = dow
-                            nms[k] = nm
-                        #
-                        if k not in obj1s:
-                            obj1s[k] = []
-                            obj2s[k] = []
-                            rucs[k] = []
-                        obj1, obj2, ruc = [float(row[cn]) for cn in
-                                                         ['obj1', 'obj2', 'ratioUnCoveredBK']]
-                        obj1s[k].append(obj1)
-                        obj2s[k].append(obj2)
-                        rucs[k].append(ruc)
-            res_fpath = opath.join(lv_dpath, 'res-%s.csv' % prefix)
-            with open(res_fpath, 'w') as w_csvfile:
+def summary_MA(numEpoch=4, lv='Lv4', randomSolCoice=False):
+    res_dpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'results'])
+    prefix_dpaths = {}
+    for dn in os.listdir(res_dpath):
+        if not dn.startswith('MA%d' % int(randomSolCoice)):
+            continue
+        _, _, _, _, _, _, _repeatNum = dn.split('-')
+        prefix = dn[len('MA0-'):-len('-%s' % _repeatNum)]
+        if prefix not in prefix_dpaths:
+            prefix_dpaths[prefix] = []
+        prefix_dpaths[prefix].append(opath.join(res_dpath, dn))
+    for prefix in prefix_dpaths:
+        numBK = None
+        dateHour, dows, nms = [], {}, {}
+        obj1s, obj2s, rucs = {}, {}, {}
+        for i, dpath in enumerate(prefix_dpaths[prefix]):
+            with open(opath.join(dpath, 'res-%s.csv' % prefix)) as r_csvfile:
+                reader = csv.DictReader(r_csvfile)
+                for row in reader:
+                    date, hour = [row[cn] for cn in ['date', 'hour']]
+                    k = (date, hour)
+                    if i == 0:
+                        dow, numBK, nm = [int(row[cn]) for cn in ['dow', 'numBK', 'numMules']]
+                        dateHour.append(k)
+                        dows[k] = dow
+                        nms[k] = nm
+                    #
+                    if k not in obj1s:
+                        obj1s[k] = []
+                        obj2s[k] = []
+                        rucs[k] = []
+                    obj1, obj2, ruc = [float(row[cn]) for cn in
+                                                     ['obj1', 'obj2', 'ratioUnCoveredBK']]
+                    obj1s[k].append(obj1)
+                    obj2s[k].append(obj2)
+                    rucs[k].append(ruc)
+        res_fpath = opath.join(res_dpath, 'E%d-res-MA%d-%s.csv' % (numEpoch, int(randomSolCoice), prefix))
+        with open(res_fpath, 'w') as w_csvfile:
+            writer = csv.writer(w_csvfile, lineterminator='\n')
+            new_header = ['date', 'dow', 'hour', 'numBK', 'numMules',
+                          'obj1', 'obj2', 'ratioUnCoveredBK',
+                          'min_obj1', 'min_obj2', 'min_ratioUnCoveredBK',
+                          'max_obj1', 'max_obj2', 'max_ratioUnCoveredBK',
+                          'std_obj1', 'std_obj2', 'std_ratioUnCoveredBK',
+                          'data_obj1', 'data_obj2', 'data_ratioUnCoveredBK']
+            writer.writerow(new_header)
+        for i, (yyyymmdd, hour) in enumerate(dateHour):
+            k = (yyyymmdd, hour)
+            new_row = [yyyymmdd, dows[k], hour, numBK, nms[k]]
+            new_row += [np.average(m[k]) for m in [obj1s, obj2s, rucs]]
+            new_row += [np.min(m[k]) for m in [obj1s, obj2s, rucs]]
+            new_row += [np.max(m[k]) for m in [obj1s, obj2s, rucs]]
+            new_row += [np.std(m[k]) for m in [obj1s, obj2s, rucs]]
+            new_row += [list(m[k]) for m in [obj1s, obj2s, rucs]]
+            with open(res_fpath, 'a') as w_csvfile:
                 writer = csv.writer(w_csvfile, lineterminator='\n')
-                new_header = ['date', 'dow', 'hour', 'numBK', 'numMules',
-                              'obj1', 'obj2', 'ratioUnCoveredBK',
-                              'min_obj1', 'min_obj2', 'min_ratioUnCoveredBK',
-                              'max_obj1', 'max_obj2', 'max_ratioUnCoveredBK',
-                              'std_obj1', 'std_obj2', 'std_ratioUnCoveredBK',
-                              'data_obj1', 'data_obj2', 'data_ratioUnCoveredBK']
-                writer.writerow(new_header)
-            for i, (yyyymmdd, hour) in enumerate(dateHour):
-                k = (yyyymmdd, hour)
-                new_row = [yyyymmdd, dows[k], hour, numBK, nms[k]]
-                new_row += [np.average(m[k]) for m in [obj1s, obj2s, rucs]]
-                new_row += [np.min(m[k]) for m in [obj1s, obj2s, rucs]]
-                new_row += [np.max(m[k]) for m in [obj1s, obj2s, rucs]]
-                new_row += [np.std(m[k]) for m in [obj1s, obj2s, rucs]]
-                new_row += [list(m[k]) for m in [obj1s, obj2s, rucs]]
-                with open(res_fpath, 'a') as w_csvfile:
-                    writer = csv.writer(w_csvfile, lineterminator='\n')
-                    writer.writerow(new_row)
+                writer.writerow(new_row)
+
+# import pandas as pd
+#
+# def comp_epochs():
+#     lv = 'Lv4'
+#     prefix = 'G(50)-P(100)-O(80)-pC(0.50)-pM(0.50)'
+#     ce_fpath = 'epochComparision.csv'
+#     with open(ce_fpath, 'w') as w_csvfile:
+#         writer = csv.writer(w_csvfile, lineterminator='\n')
+#         new_header = ['numEpoch',
+#                       'obj1', 'obj2', 'ratioUnCoveredBK']
+#         writer.writerow(new_header)
+#     for numEpoch in [1, 2, 4]:
+#         res_dpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'results'])
+#         res_fpath = opath.join(res_dpath, 'E%d-res-MA1-%s.csv' % (numEpoch, prefix))
+#
+#         pd.read_csv(res_fpath)
+#
+#
+#         print(res_fpath)
 
 
 if __name__ == '__main__':
     # init_experiments(numEpoch=1)
     #
-    run_experiments_MA(0, 2, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5, randomSolCoice=True)
-
-
-    # for lv in TARGET_LVS:
-    #     run_experiments_FL(lv)
-    # import time
-    # oldTime = time.time()
-    # run_experiments_MA(1001, 'Lv4', N_g=50)
-    # print(time.time() - oldTime)
-    # summary_MA()
+    # run_experiments_MA(0, 2, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5, randomSolCoice=True)
+    # summary_MA(numEpoch=1, lv='Lv4', randomSolCoice=True)
+    comp_epochs()

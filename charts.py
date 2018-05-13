@@ -303,9 +303,62 @@ def chart_Markov():
         plt.close()
 
 
+
+
+def solutionChoice():
+    from experiments import exp_dpath
+    numEpoch, lv = 4, 'Lv4'
+    ma_prefix = 'G(50)-P(100)-O(80)-pC(0.50)-pM(0.50)'
+    #
+    # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
+    # mea, _ylim, legendLoc = 'obj2', (0, 30), 'upper right'
+    mea, _ylim, legendLoc = 'ratioUnCoveredBK', None, 'upper right'
+    #
+    times, measures = [], []
+    res_dpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'results'])
+    for i, ma_id in enumerate(['MA1', 'MA0']):
+        res_fpath = opath.join(res_dpath, 'E%d-res-%s-%s.csv' % (numEpoch, ma_id, ma_prefix))
+        aMeasure = []
+        with open(res_fpath) as r_csvfile:
+            reader = csv.DictReader(r_csvfile)
+            for row in reader:
+                if i == 0:
+                    hour = int(row['hour'])
+                    times.append('%s H%02d' % (id_dow[int(row['dow'])], hour))
+                aMeasure.append(float(row[mea]))
+        measures.append(aMeasure)
+
+
+
+    xticks_index, xticks_label = [], []
+    for i, yyyymmddhh in enumerate(times):
+        if 'H09' in yyyymmddhh:
+            xticks_index.append(i)
+            xticks_label.append(yyyymmddhh)
+    #
+    fig = plt.figure(figsize=FIGSIZE)
+    ax = fig.add_subplot(111)
+    # ax.set_xlabel('Time', fontsize=_fontsize)
+    # ax.set_ylabel(yLabels[mea], fontsize=_fontsize)
+    for i, y in enumerate(measures):
+        plt.plot(range(len(times)), y, color=clists[i], marker=mlists[i])
+    plt.legend(['Random', 'Min.Mules'], ncol=1, loc=legendLoc, fontsize=_fontsize)
+    plt.xticks(xticks_index, xticks_label, rotation=20)
+    ax.tick_params(axis='both', which='major', labelsize=_fontsize)
+
+    plt.ylim(_ylim)
+    img_ofpath = opath.join('_charts', 'SolChoice-%s-%s.pdf' % (lv, mea))
+
+    plt.savefig(img_ofpath, bbox_inches='tight', pad_inches=0)
+
+
+
+
+
 if __name__ == '__main__':
     # numMules()
     # objectivs_sim()
     # evolution()
     # boxPlots()
-    chart_Markov()
+    # chart_Markov()
+    solutionChoice()
