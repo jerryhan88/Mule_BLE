@@ -4,7 +4,7 @@ import csv, pickle
 from functools import reduce
 #
 from beaconLayout import get_lmPairSP
-from muleDuration import get_dt, md_dpath
+from a1_muleDuration import get_dt, md_dpath
 
 
 MIN60 = 60

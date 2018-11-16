@@ -6,11 +6,11 @@ import datetime
 import numpy as np
 from functools import reduce
 #
-from muleDuration import md_dpath
+from a1_muleDuration import md_dpath
 from Markov1Step import m1s_dpath
 from muleDayTrajecty import mdt_dpath
 from beaconLayout import get_bzDist, get_plCovLD
-from muleDuration import MON, TUE, WED, THR, FRI
+from a1_muleDuration import MON, TUE, WED, THR, FRI
 from beaconLayout import PL_RANGE, TARGET_LVS
 #
 # from problems import *
@@ -448,5 +448,5 @@ if __name__ == '__main__':
     # init_experiments(numEpoch=1)
     #
     # run_experiments_MA(0, 2, 'Lv4', N_g=50, N_p=100, N_o=80, p_c=0.5, p_m=0.5, randomSolCoice=True)
-    # summary_MA(numEpoch=1, lv='Lv4', randomSolCoice=True)
-    comp_epochs()
+    summary_MA(numEpoch=2, lv='Lv4', randomSolCoice=False)
+    # comp_epochs()

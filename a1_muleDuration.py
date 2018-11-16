@@ -1,31 +1,36 @@
 import os.path as opath
+import sys
 import os, shutil
 import multiprocessing
 import gzip, csv, pickle
-import datetime, time
+import time
+from datetime import datetime
 import pandas as pd
 from functools import reduce
+#
+from __path_organizer import ef_dpath, dp_dpath
+
+#
+# Input file path
+#
+month_fpath = {2: opath.join(ef_dpath, 'location_archival_2017_2_1.csv.gz'),
+               3: opath.join(ef_dpath, 'location_archival_2017_3_1.csv.gz')}
+#
+# Output directory path
+#
+md_dpath = reduce(opath.join, [dp_dpath, '1_muleDuration'])
+if not opath.exists(md_dpath):
+    os.mkdir(md_dpath)
 
 
 HOUR_9AM_6PM = [h for h in range(9, 18)]
 MON, TUE, WED, THR, FRI, SAT, SUN = range(7)
 WEEK_DAYS = [MON, TUE, WED, THR, FRI]
 LEAST_DAYS = 4
-#
-# Input file path
-#
-raw_dpath = reduce(opath.join, ['..', '_data', 'Mule_BLE', '_raw'])
-rawTraj2_fpath = opath.join(raw_dpath, 'location_archival_2017_2_1.csv.gz')
-rawTraj3_fpath = opath.join(raw_dpath, 'location_archival_2017_3_1.csv.gz')
-#
-# Output directory path
-#
-md_dpath = reduce(opath.join, ['..', '_data', 'Mule_BLE', 'muleDuration'])
-if not opath.exists(md_dpath):
-    os.mkdir(md_dpath)
 
-get_dt = lambda tf_str: datetime.datetime.fromtimestamp(time.mktime(time.strptime(tf_str, "%Y-%m-%d %H:%M:%S")))
+get_dt = lambda tf_str: datetime.fromtimestamp(time.mktime(time.strptime(tf_str, "%Y-%m-%d %H:%M:%S")))
 
+TARGET_LVS = {'Lv2', 'Lv4'}
 
 def month2LvDay(month):
     month_dpath = opath.join(md_dpath, 'M%d' % month)
@@ -34,8 +39,7 @@ def month2LvDay(month):
     muleID_fpath = opath.join(month_dpath, '_muleID-M%d.pkl' % month)
     madd_mid, mid_madd = {}, {}
     #
-    rawTraj_fpath = rawTraj2_fpath if month == 2 else rawTraj3_fpath
-    with gzip.open(rawTraj_fpath, 'rt') as r_csvfile:
+    with gzip.open(month_fpath[month], 'rt') as r_csvfile:
         reader = csv.DictReader(r_csvfile)
         for row in reader:
             t = time.strptime(row['time'], "%Y-%m-%d %H:%M:%S")
@@ -46,6 +50,8 @@ def month2LvDay(month):
             locationID = row['location']
             lv = locationID[3:6]
             lv = 'Lv%s' % lv[1:-1]
+            if lv not in TARGET_LVS:
+                continue
             lv_dpath = opath.join(month_dpath, '%s' % lv)
             if not opath.exists(lv_dpath):
                 os.mkdir(lv_dpath)
@@ -175,3 +181,12 @@ def filter_mules(month):
     print("# active mules in Feb.: %d" % len(active_mids))
     with open(am_fpath, 'wb') as fp:
         pickle.dump(active_mids, fp)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) <= 1:
+        month2LvDay(2)
+    else:
+        assert len(sys.argv)
+        month = int(sys.argv[1])
+        month2LvDay(month)

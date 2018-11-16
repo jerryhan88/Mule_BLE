@@ -267,8 +267,8 @@ def boxPlots():
 
 
 def chart_Markov():
-    from dataProcessing import TARGET_LVS
-    comp_dpath = opath.join('z_data', '_comparision')
+    from beaconLayout import TARGET_LVS
+    comp_dpath = reduce(opath.join, ['..', '_data', 'Mule_BLE', '_comparision'])
     for lv in TARGET_LVS:
         error_fpath = opath.join(comp_dpath, '_error-%s.pkl' % lv)
         with open(error_fpath, 'rb') as fp:
@@ -294,7 +294,7 @@ def chart_Markov():
             error = np.sort(np.array(error))
             yvals = np.arange(len(error)) / float(len(error) - 1)
             plt.plot(error, yvals, ltype[i], color=clists[i])
-        plt.legend(['%d-Step' % i for i in range(2)], ncol=1, loc='upper left', fontsize=_fontsize + 6)
+        plt.legend(['0th-order', '1st-order'], ncol=1, loc='upper left', fontsize=_fontsize + 6)
         ax.tick_params(axis='both', which='major', labelsize=_fontsize + 6)
         plt.xlim((-0.02, 0.33))
         plt.ylim((0.78, 0.88))
@@ -306,13 +306,15 @@ def chart_Markov():
 
 
 def solutionChoice():
+    FIGSIZE = (6, 6)
+
     from experiments import exp_dpath
     numEpoch, lv = 4, 'Lv4'
     ma_prefix = 'G(50)-P(100)-O(80)-pC(0.50)-pM(0.50)'
     #
     # mea, _ylim, legendLoc = 'obj1', (700, 1005), 'lower left'
-    # mea, _ylim, legendLoc = 'obj2', (0, 30), 'upper right'
-    mea, _ylim, legendLoc = 'ratioUnCoveredBK', None, 'upper right'
+    mea, _ylim, legendLoc = 'obj2', (0, 30), 'upper right'
+    # mea, _ylim, legendLoc = 'ratioUnCoveredBK', None, 'upper right'
     #
     times, measures = [], []
     res_dpath = reduce(opath.join, [exp_dpath, 'epoch%d' % numEpoch, lv, 'results'])
@@ -341,8 +343,8 @@ def solutionChoice():
     # ax.set_xlabel('Time', fontsize=_fontsize)
     # ax.set_ylabel(yLabels[mea], fontsize=_fontsize)
     for i, y in enumerate(measures):
-        plt.plot(range(len(times)), y, color=clists[i], marker=mlists[i])
-    plt.legend(['Random', 'Min.Mules'], ncol=1, loc=legendLoc, fontsize=_fontsize)
+        plt.plot(range(len(times)), y, color=clists[3 + i], marker=mlists[3 + i])
+    plt.legend(['MA-Random', 'MA-Small'], ncol=1, loc=legendLoc, fontsize=_fontsize)
     plt.xticks(xticks_index, xticks_label, rotation=20)
     ax.tick_params(axis='both', which='major', labelsize=_fontsize)
 
@@ -360,5 +362,5 @@ if __name__ == '__main__':
     # objectivs_sim()
     # evolution()
     # boxPlots()
-    # chart_Markov()
-    solutionChoice()
+    chart_Markov()
+    # solutionChoice()

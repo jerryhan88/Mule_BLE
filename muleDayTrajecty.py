@@ -4,7 +4,7 @@ import csv, pickle
 from functools import reduce
 #
 from beaconLayout import TARGET_LVS
-from muleDuration import md_dpath
+from a1_muleDuration import md_dpath
 from muleTrajectory import mt_dpath
 from Markov1Step import m1s_dpath
 
